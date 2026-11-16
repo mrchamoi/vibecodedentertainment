@@ -1,0 +1,4 @@
+# Carpetas de herramientas locales: no forman parte del sitio
+.impeccable/
+.claude/
+.DS_Store

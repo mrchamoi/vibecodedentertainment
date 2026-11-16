@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sin señal · VIBECODED</title>
+<style>
+  html,body{height:100%;margin:0;background:#0b0a0d;color:#cfd4b8;font:16px/1.6 ui-monospace,Menlo,Consolas,monospace}
+  main{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
+  h1{font-size:28px;font-weight:normal;color:#ff5a40;margin:0 0 12px;letter-spacing:2px}
+  a{color:#ffe9a0}
+</style>
+</head>
+<body>
+<main>
+  <h1>SIN SEÑAL</h1>
+  <p>Esta página no existe.</p>
+  <p><a id="home" href="./">Volver a VIBECODED</a></p>
+</main>
+<script>
+  // En GitHub Pages de proyecto el sitio vive en /nombre-del-repo/; en un dominio propio, en la raíz.
+  var seg = location.pathname.split('/')[1];
+  document.getElementById('home').href = /\.github\.io$/.test(location.hostname) && seg ? '/' + seg + '/' : '/';
+</script>
+</body>
+</html>
