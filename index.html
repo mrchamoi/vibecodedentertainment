@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <title>T-55 Arcade Game · VIBECODED</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="T-55 Arcade Game: un juego de tanques con estética de PSX para el navegador. Gratis, sin registro ni descargas. Teclado y ratón o mando.">
+<meta name="description" content="T-55 ARCADE GAME: juego de tanques con estetica retro, vibecodeado casi completamente con claude, cambios minimos.">
 <meta name="theme-color" content="#0b0a0d">
 <meta property="og:type" content="website">
 <meta property="og:title" content="T-55 Arcade Game · VIBECODED">
-<meta property="og:description" content="Juego de tanques con estética de PSX para el navegador. Gratis y sin registro.">
+<meta property="og:description" content="juego de tanques con estetica retro, vibecodeado casi completamente con claude.">
 <style>
   @font-face{font-family:"Press Start 2P";src:url("vendor/PressStart2P-Regular.ttf") format("truetype");font-display:swap}
   html,body{margin:0;background:#0b0a0d;color:#cfd4b8;font-family:"Press Start 2P",monospace;overflow-x:hidden}
@@ -62,6 +62,21 @@
   dialog .close{background:#2b3325;border:0;color:#fff;font-size:12px;padding:8px 10px;cursor:pointer;
                 box-shadow:inset 2px 2px 0 #8b9872,inset -2px -2px 0 #0b0e09}
   dialog .close:hover{background:#3b4632;color:#ffe9a0}
+  /* Manual del juego: el librillo que viene en la caja */
+  #manual{max-width:700px}
+  #manual .body{padding:14px;text-align:center}
+  #manCv{display:block;width:100%;max-width:640px;margin:0 auto;image-rendering:pixelated;cursor:pointer;box-shadow:0 0 0 2px #000}
+  #manual .nav{display:flex;justify-content:space-between;max-width:640px;margin:12px auto 0}
+  /* Aviso para móviles: aquí se juega con mando */
+  #mobile{max-width:520px}
+  #mobile .body{text-align:center;padding:18px 18px 24px}
+  #mobile canvas#padArt{display:block;width:224px;height:128px;margin:6px auto 18px;image-rendering:pixelated}
+  #mobile .big{font-size:16px;line-height:1.7;color:#ffe060;text-shadow:2px 2px 0 #000;margin-bottom:14px}
+  #padState{display:inline-block;margin:6px 0 18px;padding:6px 10px;background:#0b0e19;color:#f0b020;box-shadow:inset 2px 2px 0 #0b0e09,inset -2px -2px 0 #33406a}
+  #padState.ok{color:#58d030}
+  #padState:not(.ok) span{animation:blink 1s steps(2) infinite}
+  #mobile .close{display:block;margin:0 auto;font-size:16px;padding:12px 18px}
+  @media (prefers-reduced-motion:reduce){#padState span{animation:none}}
 </style>
 </head>
 <body>
@@ -77,10 +92,10 @@
 <!-- La estantería: la carátula del juego elegido, la lista de juegos y la letra pequeña -->
 <div id="shelf">
   <h2>ELIGE UN JUEGO</h2>
-  <canvas id="case" role="button" tabindex="0" aria-label="Meter el disco y jugar"></canvas>
+  <canvas id="case" role="button" tabindex="0" aria-label="Juego: pulsa Enter para meter el disco y jugar, o la tecla I para leer el manual"></canvas>
   <div id="gname"></div>
   <div id="ggenre"></div>
-  <div id="hint">HAZ CLIC EN EL DISCO</div>
+  <div id="hint">DISCO: JUGAR · CAJA: MANUAL</div>
   <div id="touch" hidden>ESTE JUEGO NECESITA TECLADO Y RATON, O UN MANDO</div>
   <div id="games"></div>
   <footer>
@@ -89,6 +104,23 @@
     <button data-legal="">AVISO LEGAL</button><button data-legal="s3">PRIVACIDAD</button><button data-legal="s4">CONDICIONES</button><button data-legal="s6">CREDITOS</button>
   </footer>
 </div>
+
+<dialog id="mobile">
+  <div class="bar"><canvas id="logo3" width="32" height="32"></canvas><h3>ESTAS EN UN MOVIL</h3></div>
+  <div class="body">
+    <canvas id="padArt" width="112" height="64"></canvas>
+    <p class="big">LOS JUEGOS DE VIBECODED SE JUEGAN CON MANDO</p>
+    <p>Conecta un mando por Bluetooth o por cable y pulsa cualquier botón. También puedes entrar desde un ordenador y jugar con teclado y ratón.</p>
+    <div id="padState"><span>●</span> BUSCANDO MANDO</div>
+    <button class="close" id="mobOk">ENTENDIDO</button>
+  </div>
+</dialog>
+
+<dialog id="manual">
+  <div class="bar"><canvas id="logo4" width="32" height="32"></canvas><h3>MANUAL</h3><button class="close">X CERRAR</button></div>
+  <div class="body"><canvas id="manCv" width="320" height="240" role="img" aria-label="Página del manual con los controles del juego"></canvas>
+  <div class="nav"><button class="close" id="manPrev">&lt; ANTES</button><button class="close" id="manNext">SIGUE &gt;</button></div></div>
+</dialog>
 
 <dialog id="legal">
   <div class="bar"><canvas id="logo2" width="32" height="32"></canvas><h3>AVISO LEGAL</h3><button class="close">X CERRAR</button></div>
@@ -154,7 +186,8 @@
    ============================================================ */
 if (!window.THREE) document.body.innerHTML = '<p style="padding:24px">No se pudo cargar vendor/three.min.js: la carpeta vendor debe ir junto a index.html.</p>';
 
-const cv = document.getElementById('c'), g = cv.getContext('2d');
+const cv = document.getElementById('c');
+let g = cv.getContext('2d');                         // «let»: el manual toma prestadas las funciones de dibujo cambiando el lienzo
 const tvc = document.getElementById('tv'), crt = document.getElementById('crt');
 // El juego corre SIEMPRE a 320×240 (resolución de PSX), con texturas, tramado y vértices que tiemblan,
 // y se ve dentro de un televisor dibujado. Se controla con mando o con teclado y ratón a la vez.
@@ -338,10 +371,54 @@ function makeTank(cHull, cTur){
   tur.add(dome, barrel, cyl(2.6, 1.6, mt, -4, 18.4, 4.5), cyl(2.2, 1.4, mt, -3, 18.4, -4.5));
   return { hull, tur, barrel, mats: [mh, mt] };
 }
-function makeGun(){
-  const hull = new THREE.Group(), ms = mat(0x8a8560, texCamo), md = mat(0x33352b);
-  hull.add(box(2, 9, 20, ms, 0, 7.5, 0), cyl(1.2, 28, md, 13, 7, 0, 'x'), cyl(4, 2, md, 0, 4, -9, 'z'), cyl(4, 2, md, 0, 4, 9, 'z'));
-  for (const s of [-1, 1]){ const t = box(24, 1.6, 1.6, md, -11, 1.5, s * 5.5); t.rotation.y = s * 0.42; hull.add(t); }
+function makeJeep(){                                  // todoterreno militar con lanzacohetes de cuatro tubos en la caja
+  const hull = new THREE.Group(), mb = mat(0x55523a, texCamo), md = mat(0x1e1e1a), mw = mat(0x2a2924, texTrack), mg = mat(0x18262c);
+  hull.add(box(27, 3, 10, md, 0, 4.6, 0), box(9, 4.5, 10.5, mb, 9, 8.2, 0), box(7.5, 7, 11, mb, 1, 9.6, 0), box(0.8, 3.4, 9.4, mg, 5, 11, 0),
+           box(11, 3.4, 11, mb, -8, 7.6, 0), box(1.4, 1.8, 11.4, md, 14, 5.6, 0), cyl(3, 1.8, mw, -14.2, 9, 0, 'x'));
+  for (const x of [-8.5, 8.5]) for (const z of [-5.8, 5.8]) hull.add(cyl(3.5, 2.8, mw, x, 3.5, z, 'z'), box(8.5, 0.9, 3.2, mb, x, 7.4, z));   // ruedas y aletas
+  const rack = new THREE.Group(); rack.position.set(-8, 11.4, 0); rack.rotation.z = 0.24;
+  for (const y of [0, 2.6]) for (const z of [-1.4, 1.4]) rack.add(cyl(1.25, 13, md, 1, y, z, 'x'));
+  rack.add(box(3, 5.4, 6, mb, -2, 1.3, 0)); hull.add(rack);
+  return { hull, mats: [] };
+}
+function makeTD(){                                    // cazacarros: casamata inclinada y cañón largo fijo, sobre el mismo tren de rodaje que los tanques
+  const hull = new THREE.Group(), mh = mat(0x504c38, texCamo), mc = mat(0x5c5740, texCamo), mk = mat(0x46423a, texTrack), mb = mat(0x2c2b24), mw = mat(0x36332a);
+  for (const z of [-11.5, 11.5]){
+    hull.add(box(46, 8, 7, mk, 0, 4, z), box(47, 1, 8, mh, 0, 8.6, z));
+    for (let i = 0; i < 5; i++) hull.add(cyl(3.7, 1, mw, -17 + i * 8.5, 3.9, z + Math.sign(z) * 3.6, 'z'));
+  }
+  const front = box(15, 2.6, 18, mc, 17.5, 13.4, 0); front.rotation.z = -0.72;                   // frontal muy inclinado
+  const back = box(11, 2.2, 17.6, mc, -9.5, 14.8, 0); back.rotation.z = 0.62;
+  hull.add(box(40, 7, 17, mh, -1, 8.5, 0), box(20, 8, 18, mc, 3, 15.6, 0), front, back,
+           box(6, 6, 8, mh, 14.5, 15.4, 0), cyl(1.8, 36, mb, 34, 15.4, 0, 'x'), cyl(2.6, 5, mb, 50, 15.4, 0, 'x'),   // mantelete, cañón y freno de boca
+           cyl(2.8, 2, mh, 2, 20.4, -5), box(8, 1, 12, mk, -18, 12.1, 0),                                             // cúpula y rejilla del motor
+           cyl(3, 8, mh, -24.5, 10, -5, 'z'), cyl(3, 8, mh, -24.5, 10, 5, 'z'));                                      // bidones
+  return { hull, mats: [] };
+}
+const rotorDiscMat = new THREE.MeshBasicMaterial({ color: 0x0c0c0a, transparent: true, opacity: 0.2, depthWrite: false });
+function makeHeli(){                                  // helicóptero de ataque: cabinas en tándem, alas cortas con cohetes y botalón de cola
+  const hull = new THREE.Group(), mb = mat(0x4c4a36, texCamo), mu = mat(0x3a3a2c, texCamo), mg = mat(0x16242a), md = mat(0x1a1a18), rotor = new THREE.Group();
+  const boom = box(27, 3.2, 3.2, mb, -25, 3.4, 0); boom.rotation.z = -0.07;
+  const fin = box(5, 12, 1.4, mb, -38, 9, 0); fin.rotation.z = 0.4;
+  hull.add(box(27, 9, 9, mb, 0, 0, 0), box(9, 6, 7.4, mb, 16, -1.5, 0), box(4, 3.4, 5, mu, 21, -2.6, 0),            // fuselaje y morro
+           box(7, 4, 6.2, mg, 14.5, 3, 0), box(7.5, 4.6, 6.8, mg, 7.5, 5.6, 0),                                    // cabinas
+           box(15, 4.4, 7.4, mu, -3.5, 6.4, 0), cyl(1.6, 5, md, -12, 6.6, -2.4, 'x'), cyl(1.6, 5, md, -12, 6.6, 2.4, 'x'),   // turbinas y escapes
+           boom, fin, box(7, 1, 1.2, md, -37, 12, 1.6),                                                            // cola y rotor de cola
+           box(6, 1.3, 28, mu, -2, -1.4, 0), cyl(0.8, 7, md, 23, -4.6, 0, 'x'),                                     // alas cortas y cañón de morro
+           box(1.6, 3.4, 1.6, md, 9, -6, 0), cyl(1.6, 1.4, md, 9, -7.8, 0, 'z'), cyl(1.6, 1.4, md, -6, -6.4, -5.4, 'z'), cyl(1.6, 1.4, md, -6, -6.4, 5.4, 'z'),   // tren
+           cyl(1.1, 4, md, -2, 9.4, 0));
+  for (const z of [-9, -13, 9, 13]) hull.add(cyl(1.7, 8, md, -1, -3.4, z, 'x'));                                    // contenedores de cohetes
+  rotor.add(new THREE.Mesh(new THREE.CylinderGeometry(28, 28, 0.2, 14), rotorDiscMat), box(56, 0.5, 2.4, md, 0, 0, 0), box(2.4, 0.5, 56, md, 0, 0, 0));
+  rotor.position.set(-2, 11.6, 0); hull.add(rotor);
+  return { hull, rotor, mats: [] };
+}
+function makeMortar(){                                // mortero: tubo sobre bípode y placa, tras un parapeto de sacos en herradura
+  const hull = new THREE.Group(), md = mat(0x2e3028), mc = mat(0x5a4a30, texCrate);
+  const tube = cyl(2, 19, md, 1.5, 8.6, 0, 'x'); tube.rotation.z = 1.1 - Math.PI / 2;               // apunta arriba y al frente
+  hull.add(cyl(5.5, 1.2, md, -3, 0.8, 0), tube, box(7, 4, 5, mc, -9, 2, 8), box(6, 3, 4, mc, -10, 1.5, -8));
+  for (const sd of [-1, 1]){ const leg = box(1, 10.5, 1, md, 6, 5, sd * 2.6); leg.rotation.x = sd * 0.3; leg.rotation.z = 0.2; hull.add(leg); }
+  for (let i = -2; i <= 2; i++){ const a = i * 0.52, bag = box(5, 4.4, 9.5, sandMat, Math.cos(a) * 16, 2.2, Math.sin(a) * 16); bag.rotation.y = -a; hull.add(bag); }
+  for (let i = -1.5; i <= 1.5; i++){ const a = i * 0.52, bag = box(5, 4.2, 9.5, sandMat, Math.cos(a) * 16, 6.4, Math.sin(a) * 16); bag.rotation.y = -a; hull.add(bag); }
   return { hull, mats: [] };
 }
 function darken(m){ for (const o of [m.hull, m.tur]) if (o) o.traverse(c => { if (c.isMesh) c.material = deadMat; }); if (m.tur) m.tur.rotation.x = 0.13; }
@@ -356,6 +433,8 @@ const shellGeo = new THREE.SphereGeometry(1.5, 6, 6);
 const shellMats = [psx(new THREE.MeshBasicMaterial({ color: 0xffe9a0 })), psx(new THREE.MeshBasicMaterial({ color: 0xff5030 }))];
 
 // partículas: reserva fija de esferas
+const strikeRingGeo = new THREE.RingGeometry(0.86, 1, 24), strikeFillGeo = new THREE.CircleGeometry(1, 20);
+const strikeMat = new THREE.MeshBasicMaterial({ color: 0xff2a18, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
 const POOL = [], partGeo = new THREE.SphereGeometry(1, 6, 5);
 for (let i = 0; i < 400; i++){
   const m = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }));
@@ -452,7 +531,7 @@ function powerOff(){
   document.documentElement.style.overflow = ''; document.getElementById('down').style.display = '';
   cv.style.cursor = ''; drawTV(false);
   ins.on = false; ins.t = 0; ins.scrolled = false;
-  if (lidPivot){ lidPivot.rotation.y = 0; disc.position.set(0.12, 0, 0.03); disc.rotation.set(Math.PI / 2, 0, 0); }
+  if (lidPivot){ lidPivot.rotation.y = 0; disc.position.set(DISC_X, 0, 0.03); disc.rotation.set(Math.PI / 2, 0, 0); }
   document.getElementById('shelf').scrollIntoView({ behavior: 'smooth' });
 }
 addEventListener('resize', resize); resize();
@@ -630,36 +709,112 @@ function genWorld(){
 
 function reset(){
   if (PM) scene.remove(PM.hull, PM.tur);
-  genWorld();
+  genWorld(); U = newU(); upT = 0;
   P = { x: WS / 2, y: WS / 2, h: -Math.PI / 2, ta: -Math.PI / 2, v: 0, vL: 0, vR: 0, w: 0, hp: 100, ap: 12, mg: 250, mgT: 0, aim: false, aimWant: 0, mga: -Math.PI / 2, inL: 0, inR: 0,
         breech: 'AP', ram: 0, ramType: null, recoil: 0, hurt: 0 };
   PM = makeTank(0x56533a, 0x605c40); scene.add(PM.hull, PM.tur);   // verde oliva apagado y sucio
-  enemies = []; shells = []; parts = []; crates = [];
+  enemies = []; shells = []; parts = []; crates = []; queue = []; strikes = []; MUS.heat = 0;
   wave = 0; waveT = 1.5; score = 0; combo = 0; comboT = 0; camH = P.h;
   state = 'play';
 }
 
 // Tipos de enemigo. sp = velocidad, turn = giro del casco, tr = giro de la torreta, stop = distancia a la que se para,
 // rl = recarga del cañón, pow = multiplicador de daño, sc = escala del modelo.
+// Mejoras: tras cada oleada se ofrecen tres al azar y eliges una. U guarda lo acumulado en la partida.
+let U, UP = [], upT = 0;
+const newU = () => ({ speed: 1, tur: 1, ram: 1, maxHp: 100, maxAp: MAXAMMO, mgRange: 1, disp: 1, dmg: 1, lv: {} });
+const UPG = [
+  { k: 'speed',   t: 'MOTOR',         d: '+12% DE VELOCIDAD',                 f: u => u.speed *= 1.12 },
+  { k: 'tur',     t: 'TORRETA',       d: 'EL CAÑON GIRA UN 25% MAS RAPIDO',   f: u => u.tur *= 1.25 },
+  { k: 'ram',     t: 'CARGADOR',      d: 'CARGA UN 15% MAS RAPIDA',           f: u => u.ram *= 0.85 },
+  { k: 'maxHp',   t: 'BLINDAJE',      d: '+20 DE BLINDAJE MAXIMO',            f: u => { u.maxHp += 20; P.hp += 20; } },
+  { k: 'maxAp',   t: 'BODEGA',        d: '+4 PROYECTILES DE CAPACIDAD',       f: u => { u.maxAp += 4; P.ap += 4; } },
+  { k: 'mgRange', t: 'AMETRALLADORA', d: '+25% DE ALCANCE',                   f: u => u.mgRange *= 1.25 },
+  { k: 'disp',    t: 'ESTABILIZADOR', d: 'TIRO MAS PRECISO EN MARCHA',        f: u => u.disp *= 0.7 },
+  { k: 'dmg',     t: 'MUNICION',      d: 'EL CAÑON HACE UN 20% MAS DE DAÑO',  f: u => u.dmg *= 1.2 },
+  { k: 'fix',     t: 'REPARACION',    d: 'RECUPERA 50 DE BLINDAJE AHORA',     f: u => P.hp = Math.min(u.maxHp, P.hp + 50) },
+  { k: 'sup',     t: 'SUMINISTROS',   d: 'LLENA PROYECTILES Y AMETRALLADORA', f: u => { P.ap = u.maxAp; P.mg = 500; } }
+];
+function openUpgrade(){
+  setAim(false); K.F = K.B = K.L = K.R = K.mg = false;
+  const pool = UPG.filter(o => o.k !== 'fix' || P.hp < U.maxHp); UP = [];
+  while (UP.length < 3) UP.push(pool.splice(Math.random() * pool.length | 0, 1)[0]);
+  UP.t = performance.now(); PICK.sel = 0; state = 'upgrade'; blip(660, 0.25);
+}
+function chooseUpgrade(i){
+  const o = UP[i]; if (!o || performance.now() - UP.t < 450) return;   // un momento de gracia, para no elegir sin querer
+  o.f(U); U.lv[o.k] = (U.lv[o.k] || 0) + 1;
+  say(o.t + ' mejorado'); blip(880, 0.3); state = 'play'; waveT = 1.2;
+}
+// Listas con cursor (mejoras y game over): se manejan igual con ratón, teclado o mando.
+const PICK = { sel: 0 }, DEAD_OPTS = ['REINTENTAR', 'VOLVER AL MENU'];
+const pickN = () => state === 'dead' ? DEAD_OPTS.length : UP.length;
+const pickY = i => state === 'dead' ? 163 + i * 16 : 84 + i * 42;
+const pickAt = () => { for (let i = 0; i < pickN(); i++) if (Math.abs(M.y - pickY(i)) < (state === 'dead' ? 8 : 19) && Math.abs(M.x - W / 2) < 145) return i; return -1; };
+function pickCmd(c){
+  const n = pickN();
+  if (c === 'up' || c === 'down'){ PICK.sel = (PICK.sel + (c === 'up' ? n - 1 : 1)) % n; blip(330, 0.05); return; }
+  if (state === 'dead'){
+    if (performance.now() - deadAt < 900) return;
+    if (c === 'back' || (c === 'ok' && PICK.sel === 1)) start(true); else if (c === 'ok') start(false);
+  } else if (c === 'ok') chooseUpgrade(PICK.sel);
+}
+function pickHover(){ const i = pickAt(); if (i >= 0 && i !== PICK.sel){ PICK.sel = i; blip(330, 0.05); } }
+function pickClick(btn){ const i = pickAt(); if (btn === 0 && i >= 0){ PICK.sel = i; pickCmd('ok'); } }
+
 const ETYPE = {
-  gun:   { hp: 100, r: 12, pts: 100 },
-  tank:  { tank: true, hp: 100, r: 16, pts: 300, sp: 34, turn: 0.6,  tr: 0.5, stop: 300, rl: 6.5, pow: 1, sc: 1,    cols: [0x5e5746, 0x6a6350] },
-  light: { tank: true, hp: 50,  r: 13, pts: 200, sp: 74, turn: 1.3,  tr: 1.6, stop: 170,                 sc: 0.76, cols: [0x66665a, 0x74746a] },   // rápido, solo ametralladora
-  heavy: { tank: true, hp: 250, r: 21, pts: 600, sp: 19, turn: 0.33, tr: 0.3, stop: 340, rl: 8.5, pow: 2, sc: 1.32, cols: [0x3c3c38, 0x484842] }    // lento, blindado, doble daño
+  jeep:   { hp: 60,  r: 11, pts: 120, soft: true, crush: true, sp: 52, turn: 1.8, stop: 290, rl: 5.8 },   // todoterreno lanzacohetes: cohetes lentos que se pueden esquivar
+  mortar: { hp: 100, r: 12, pts: 250, soft: true, crush: true },                    // tira por encima de los edificios; el impacto se avisa en el suelo
+  heli:   { hp: 60,  r: 14, pts: 400, soft: true, fly: true, sp: 88 },              // helicóptero: te rodea y ametralla; cae con la ametralladora
+  td:     { tank: true, fixed: true, hp: 100, r: 15, pts: 350, sp: 30, turn: 0.75, tr: 0, stop: 470, rl: 6.2, pow: 1, sc: 1, ssp: 640, mz: 50 },   // cazacarros: sin torreta, tira de lejos y rápido
+  tank:   { tank: true, hp: 100, r: 16, pts: 300, sp: 34, turn: 0.6,  tr: 0.5, stop: 300, rl: 6.5, pow: 1, sc: 1,    cols: [0x5e5746, 0x6a6350] },
+  light:  { tank: true, hp: 50,  r: 13, pts: 200, sp: 74, turn: 1.3,  tr: 1.6, stop: 170,                 sc: 0.76, cols: [0x66665a, 0x74746a] },   // rápido, solo ametralladora
+  heavy:  { tank: true, hp: 250, r: 21, pts: 600, sp: 19, turn: 0.33, tr: 0.3, stop: 340, rl: 8.5, pow: 2, sc: 1.32, cols: [0x3c3c38, 0x484842] },   // lento, blindado, doble daño
+  boss:   { tank: true, hp: 600, r: 27, pts: 2500, sp: 16, turn: 0.3, tr: 0.42, stop: 380, rl: 6.5, pow: 2, sc: 1.7, cols: [0x4a2c26, 0x3a2622], salvo: 1 }   // jefe: dos disparos seguidos y llama kamikazes
 };
+const SPAWN = { jeep: [380, 800], mortar: [650, 1100], heli: [600, 900], td: [550, 950], tank: [500, 950], light: [450, 800], heavy: [550, 900], boss: [600, 800] };   // distancia al jugador
+let queue = [], strikes = [];                        // refuerzos pendientes y granadas de mortero en el aire
+function spawnEnemy(kind, ox = P.x, oy = P.y, dMin = SPAWN[kind][0], dMax = SPAWN[kind][1]){
+  const T = ETYPE[kind]; let x, y, k = 0;
+  do { const a = rnd(0, TAU), d = rnd(dMin, dMax); x = ox + Math.cos(a) * d; y = oy + Math.sin(a) * d; }
+  while ((x < 100 || y < 100 || x > WS - 100 || y > WS - 100 || inBuilding(x, y, 28) || Math.hypot(x - P.x, y - P.y) < 200) && ++k < 600);
+  x = clamp(x, 60, WS - 60); y = clamp(y, 60, WS - 60);
+  const a = Math.atan2(P.y - y, P.x - x);
+  enemies.push({ kind, tank: !!T.tank, x, y, h: a, ta: a, hp: T.hp, maxHp: T.hp, r: T.r, rl: rnd(3.5, 6), burst: 0, bt: 0, alive: true, los: false, losT: 0, side: Math.random() < 0.5 ? -1 : 1 });
+}
+// Cada oleada trae un grupo inicial y unos refuerzos que llegan después, más cerca, para que siempre haya algo encima.
+function waveKinds(w){
+  const n = (k, c) => Array(c).fill(k);
+  if (w === 1) return [[...n('jeep', 2), 'tank'], []];
+  if (w === 2) return [[...n('jeep', 2), 'tank', 'light'], ['heli']];
+  if (w === 3) return [[...n('jeep', 2), 'heavy', 'mortar'], ['td', ...n('jeep', 2)]];
+  if (w === 4) return [[...n('jeep', 4), 'tank', 'td', 'mortar'], ['light', 'heli']];
+  if (w === 5) return [['boss', 'mortar', ...n('jeep', 2)], ['light', 'heli']];
+  const k = w - 5;                                   // a partir de la 6 crece sola; jefe cada 5 oleadas
+  return [[...(w % 5 === 0 ? ['boss'] : []), ...n('jeep', 2 + 2 * Math.min(k, 3)), ...n('tank', 1 + Math.min(k >> 1, 3)), ...n('heavy', Math.min(k >> 1, 2)), ...n('td', 1 + Math.min(k >> 1, 2)), ...n('mortar', 1 + Math.min(k >> 1, 3))],
+          [...n('light', 1 + Math.min(k >> 1, 3)), ...n('heli', Math.min(1 + (k >> 1), 3)), ...n('jeep', 2)]];
+}
+const WAVE_TAG = { 2: 'HELICOPTERO', 3: 'PESADO Y CAZACARROS', 4: 'ASALTO TOTAL' };
 function spawnWave(){
   wave++;
-  const kinds = [];
-  for (let i = 0; i < 2 + wave; i++) kinds.push('gun');
-  for (let j = 0, nT = 1 + (wave >> 1); j < nT; j++) kinds.push(wave >= 3 && j === 0 ? 'heavy' : wave >= 2 && j % 2 === 1 ? 'light' : 'tank');   // el pesado llega en la oleada 3, el ligero en la 2
-  for (const kind of kinds){
-    let x, y, k = 0;
-    do { x = rnd(100, WS - 100); y = rnd(100, WS - 100); }
-    while ((Math.hypot(x - P.x, y - P.y) < 520 || Math.hypot(x - P.x, y - P.y) > 1300 || inBuilding(x, y, 28)) && ++k < 600);
-    const a = Math.atan2(P.y - y, P.x - x), T = ETYPE[kind];
-    enemies.push({ kind, tank: !!T.tank, x, y, h: a, ta: a, hp: T.hp, maxHp: T.hp, r: T.r, rl: rnd(2, 4.5), burst: 0, bt: 0, alive: true, los: false, losT: 0 });
+  let wrecks = 0;                                     // se retiran los restos viejos: quedan solo los 8 tanques más recientes
+  for (let i = enemies.length - 1; i >= 0; i--){ const e = enemies[i]; if (!e.alive && (!e.tank || ++wrecks > 8)) e.gone = true; }
+  const [first, later] = waveKinds(wave);
+  let mate = null;                                     // los todoterrenos llegan en parejas
+  for (const kind of first){
+    if (kind === 'jeep' && mate){ spawnEnemy('jeep', mate.x, mate.y, 22, 45); mate = null; }
+    else { spawnEnemy(kind); mate = kind === 'jeep' ? enemies[enemies.length - 1] : mate; }
   }
-  banner = 'OLEADA ' + wave + (kinds.includes('heavy') ? ' - TANQUE PESADO' : ''); bannerT = 2.6;
+  queue = later.map((kind, i) => ({ kind, t: 15 + i * 2.5, first: i === 0 }));
+  const tag = first.includes('boss') ? 'JEFE' : WAVE_TAG[wave];
+  banner = 'OLEADA ' + wave + (tag ? ' - ' + tag : ''); bannerT = 2.6;
+}
+function updQueue(dt){
+  const quiet = !enemies.some(e => e.alive);          // si ya no queda nadie, los refuerzos entran enseguida
+  for (let i = queue.length - 1; i >= 0; i--){
+    const q = queue[i]; q.t -= dt * (quiet ? 6 : 1);
+    if (q.t <= 0){ if (q.first){ banner = '¡REFUERZOS!'; bannerT = 1.8; blip(700, 0.2); } spawnEnemy(q.kind); queue.splice(i, 1); }
+  }
 }
 
 function blocked(x1, y1, x2, y2){
@@ -696,9 +851,9 @@ function audioInit(){
     engOsc.connect(f).connect(engGain).connect(master); engOsc.start();
     noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    // Traqueteo de orugas: ruido filtrado que "late" con los eslabones. La oruga izquierda suena por el altavoz
-    // derecho y la derecha por el izquierdo; si se mueven las dos, suena por ambos.
-    for (const [side, panTo] of [['L', 1], ['R', -1]]){
+    // Traqueteo de orugas: ruido filtrado que "late" con los eslabones. Cada oruga suena por su lado:
+    // la izquierda por el altavoz izquierdo y la derecha por el derecho; si se mueven las dos, por ambos.
+    for (const [side, panTo] of [['L', -1], ['R', 1]]){
       const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
       const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 650; bp.Q.value = 0.9;
       const trem = AC.createGain(); trem.gain.value = 0.55;
@@ -709,6 +864,8 @@ function audioInit(){
       if (AC.createStereoPanner){ const pn = AC.createStereoPanner(); pn.pan.value = panTo; lvl.connect(pn).connect(master); } else lvl.connect(master);
       src.start(); lfo.start(); trk[side] = { lvl, lfo, pan: panTo };
     }
+    MUS.gain = AC.createGain(); MUS.gain.gain.value = 0.1;
+    MUS.lp = AC.createBiquadFilter(); MUS.lp.type = 'lowpass'; MUS.lp.frequency.value = 16000; MUS.gain.connect(MUS.lp).connect(master); buildSamples();
   } catch (e){ AC = null; }
 }
 function boom(vol, freq, dur){
@@ -726,6 +883,129 @@ function blip(freq, dur = 0.12){
   ga.gain.setValueAtTime(0.08, t); ga.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(ga).connect(master); o.start(); o.stop(t + dur);
 }
+
+/* ---------- música ----------
+   Una sola melodía (4 compases de 16 semicorcheas) que suena siempre. Según lo que pasa en la partida cambian
+   el tempo, el tono y los instrumentos que la acompañan: ver MODES. */
+const MEL = [   // [paso, nota MIDI, duración en pasos]
+  [0, 76, 3], [3, 76, 1], [4, 81, 4], [8, 79, 2], [10, 76, 2], [12, 72, 4],
+  [16, 74, 3], [19, 74, 1], [20, 77, 4], [24, 76, 2], [26, 74, 2], [28, 72, 2], [30, 69, 2],
+  [32, 71, 3], [35, 71, 1], [36, 74, 4], [40, 79, 4], [44, 77, 2], [46, 74, 2],
+  [48, 76, 4], [52, 68, 2], [54, 71, 2], [56, 76, 6], [62, 76, 2]];
+const CHORD = [[45, 57, 60, 64], [41, 53, 57, 60], [43, 55, 59, 62], [40, 52, 56, 59]];   // bajo + tríada de cada compás
+const MODES = {
+  menu:   { bpm: 76,  tr: -2, pad: 1, mel: 1, bass: 1 },                                              // lenta y desnuda
+  calm:   { bpm: 100, tr: 0,  mel: 2, bass: 2, hat: 1, kick: 1 },                                     // sin enemigos a la vista
+  fight:  { bpm: 126, tr: 0,  mel: 2, bass: 3, hat: 2, kick: 2, snare: 1, arp: 1 },                   // combate
+  danger: { bpm: 146, tr: 1,  mel: 2, bass: 3, hat: 2, kick: 2, snare: 2, arp: 1, alarm: 1 },         // poco blindaje
+  boss:   { bpm: 134, tr: -5, mel: 2, bass: 3, hat: 2, kick: 2, snare: 2, arp: 1, brass: 1 },         // jefe: grave y con metales
+  shop:   { bpm: 88,  tr: 0,  pad: 1, mel: 1, bass: 2, hat: 1 },                                      // eligiendo mejora
+  dead:   { bpm: 58,  tr: -4, pad: 1, mel: 1 }                                                        // fin de la partida
+};
+const MUS = { step: 0, next: 0, bpm: 76, mode: 'menu', tr: -2, heat: 0, gain: null };
+function musicMode(){
+  if (state === 'dead') return 'dead';
+  if (state === 'upgrade') return 'shop';
+  if (state !== 'play') return 'menu';
+  if (P.hp <= 30) return 'danger';
+  if (enemies.some(e => e.alive && e.kind === 'boss')) return 'boss';
+  return MUS.heat > 0 || enemies.some(e => e.alive && e.los && (e.x - P.x) ** 2 + (e.y - P.y) ** 2 < 270000) ? 'fight' : 'calm';
+}
+// Instrumentos. Como en la consola, la música no sale de osciladores sino de muestras cortas de instrumentos
+// (cuerdas, metal, flauta, arpa, contrabajo, timbal, caja…) a 22 kHz, que se afinan cambiando su velocidad,
+// con un máximo de 24 voces a la vez y una reverberación de sala por encima. Las muestras se fabrican al arrancar.
+const SMP = {}, SR = 22050;
+let voices = [];
+function buildSamples(){
+  const noise = () => Math.random() * 2 - 1;
+  const mk = (sec, fn) => {
+    const b = AC.createBuffer(1, Math.round(sec * SR), SR), d = b.getChannelData(0); fn(d, d.length);
+    let m = 0; for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i]));
+    if (m) for (let i = 0; i < d.length; i++) d[i] /= m;
+    return b;
+  };
+  // suma de armónicos a frecuencias enteras: en un búfer de 1 s el bucle cierra sin chasquido
+  const harm = (f, amp, det, rnd_) => mk(1, (d, n) => {
+    for (const df of det) for (let h = 1; h <= 24; h++){
+      const a = amp(h, (f + df) * h); if (a < 0.002) continue;
+      const w = TAU * (f + df) * h / SR, ph = rnd_ ? Math.random() * TAU : 0;
+      for (let i = 0; i < n; i++) d[i] += a * Math.sin(w * i + ph);
+    }
+  });
+  const base = f => 69 + 12 * Math.log2(f / 440);
+  // cuerda pulsada (Karplus-Strong): arpa y contrabajo en pizzicato
+  const pluck = (f, sec, damp) => { const L = Math.round(SR / f); return { base: base(SR / (L + 0.5)), b: mk(sec, (d, n) => {
+    const buf = new Float32Array(L); let p = 0, last = 0;
+    for (let i = 0; i < L; i++) last = buf[i] = 0.45 * noise() + 0.55 * last;
+    for (let i = 0; i < n; i++){ const nx = (p + 1) % L; d[i] = buf[p]; buf[p] = (buf[p] + buf[nx]) * 0.5 * damp; p = nx; }
+  }) }; };
+  SMP.str   = { loop: true, base: base(262), b: harm(262, (h, hz) => 1 / h / (1 + (hz / 3200) ** 2), [-1, 0, 1], true) };            // sección de cuerdas
+  SMP.brass = { loop: true, base: base(262), b: harm(262, (h, hz) => (0.25 + Math.exp(-(((hz - 1100) / 900) ** 2))) / Math.sqrt(h) / (1 + (hz / 4200) ** 4), [0, 1], false) };   // metales
+  SMP.flute = { loop: true, base: base(524), b: harm(524, h => [1, 0.3, 0.1, 0.04, 0.015][h - 1] || 0, [0], false) };
+  SMP.harp  = pluck(262, 0.6, 0.994);
+  SMP.bass  = pluck(65.4, 0.8, 0.997);
+  SMP.timp  = { base: base(98), b: mk(0.9, (d, n) => { for (let i = 0; i < n; i++){ const t = i / SR, w = TAU * 98 * t;
+    d[i] = Math.sin(w) * Math.exp(-3.5 * t) + 0.5 * Math.sin(w * 1.5) * Math.exp(-5 * t) + 0.3 * Math.sin(w * 1.99) * Math.exp(-7 * t) + 0.5 * noise() * Math.exp(-70 * t); } }) };
+  SMP.bd    = { b: mk(0.45, (d, n) => { let ph = 0; for (let i = 0; i < n; i++){ const t = i / SR; ph += TAU * (48 + 70 * Math.exp(-t * 30)) / SR; d[i] = Math.sin(ph) * Math.exp(-9 * t); } }) };   // bombo
+  SMP.snare = { b: mk(0.28, (d, n) => { let lp = 0; for (let i = 0; i < n; i++){ const t = i / SR, x = noise(); lp += 0.35 * (x - lp); d[i] = (x - lp) * Math.exp(-20 * t) * 0.8 + Math.sin(TAU * 190 * t) * Math.exp(-28 * t) * 0.5; } }) };
+  SMP.hat   = { b: mk(0.1, (d, n) => { let pv = 0; for (let i = 0; i < n; i++){ const x = noise(); d[i] = (x - pv) * Math.exp(-70 * i / SR); pv = x; } }) };
+  // reverberación: respuesta de sala hecha con ruido que se apaga
+  const ir = AC.createBuffer(2, AC.sampleRate * 1.3 | 0, AC.sampleRate);
+  for (let c = 0; c < 2; c++){ const d = ir.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = noise() * Math.exp(-4.2 * i / AC.sampleRate); }
+  const cvr = AC.createConvolver(), wet = AC.createGain(); cvr.buffer = ir; wet.gain.value = 0.24;
+  MUS.lp.connect(cvr).connect(wet).connect(master);
+}
+// Toca una muestra a la altura pedida. dur = cuánto se sostiene (las de bucle) o cuándo se corta (las percusivas; 0 = entera).
+function voice(k, midi, t, dur, vol, atk = 0.008, rel = 0.08){
+  const sm = SMP[k]; if (!sm) return;
+  voices = voices.filter(e => e > t); if (voices.length >= 24) return;      // sin voces libres, la nota se pierde
+  const sr = AC.createBufferSource(), ga = AC.createGain(), rate = midi == null ? 1 : 2 ** ((midi - sm.base) / 12);
+  sr.buffer = sm.b; sr.loop = !!sm.loop; sr.playbackRate.value = rate;
+  const hold = sm.loop ? Math.max(atk, dur) : dur > 0 ? Math.min(dur, sm.b.duration / rate) : 0;
+  ga.gain.setValueAtTime(0.0001, t); ga.gain.linearRampToValueAtTime(vol, t + atk);
+  if (hold){ ga.gain.setValueAtTime(vol, t + hold); ga.gain.linearRampToValueAtTime(0.0001, t + hold + rel); }
+  const end = hold ? t + hold + rel + 0.02 : t + sm.b.duration / rate;
+  sr.connect(ga).connect(MUS.gain); sr.start(t); sr.stop(end); voices.push(end);
+}
+// Se llama en cada fotograma y programa con un poco de antelación las notas que tocan (así el ritmo no depende de los fps).
+function musicTick(){
+  if (!AC || AC.state !== 'running' || !MUS.lp) return;
+  const now = AC.currentTime;
+  if (MUS.next < now) MUS.next = now + 0.05;
+  while (MUS.next < now + 0.13){
+    const s = MUS.step, t = MUS.next, bar = s >> 4, st = s & 15, ch = CHORD[bar];
+    if (st % 4 === 0) MUS.mode = musicMode();          // los instrumentos cambian al pulso…
+    const aim = state === 'play' && P.aim, base = MODES[MUS.mode];
+    // Por la mira: todo se frena y se apaga, como si se contuviera la respiración. Quedan las cuerdas, la flauta y un latido.
+    const m = aim ? { ...base, bpm: base.bpm * 0.72, pad: 1, mel: 1, hat: 0, snare: 0, arp: 0, alarm: 0, kick: 3 } : base;
+    MUS.lp.frequency.setTargetAtTime(aim ? 750 : 16000, t, 0.12);
+    if (st === 0) MUS.tr = m.tr + (MUS.mode === 'calm' || MUS.mode === 'fight' || MUS.mode === 'danger' ? clamp(wave - 1, 0, 4) : 0);   // …y el tono, al compás: sube con cada oleada
+    MUS.bpm += (m.bpm - MUS.bpm) * 0.3;                // el tempo se desliza hasta el nuevo
+    const sd = 15 / MUS.bpm, tr = MUS.tr;
+    if (m.pad && st === 0) for (let i = 1; i < 4; i++) voice('str', ch[i] + tr, t, sd * 15, 0.05, 0.3, 0.5);                       // cuerdas sosteniendo el acorde
+    if (m.bass === 1 && st === 0) voice('str', ch[0] + tr, t, sd * 14, 0.1, 0.2, 0.4);                                             // violonchelos
+    if (m.bass === 2 && st % 2 === 0) voice('bass', ch[0] + tr + (st % 8 === 6 ? 12 : 0), t, 0, 0.3);                              // contrabajo en pizzicato
+    if (m.bass === 3 && st % 2 === 0){
+      voice('bass', ch[0] + tr + (st % 4 === 2 ? 12 : 0), t, 0, 0.34);
+      if (st % 4 === 0) voice('str', ch[0] + 12 + tr, t, sd * 1.4, 0.07, 0.02, 0.1);                                               // cuerdas graves en staccato
+    }
+    for (const n of MEL) if (n[0] === s){
+      if (m.mel === 1) voice('flute', n[1] + tr, t, n[2] * sd * 0.9, 0.1, 0.04, 0.15);                                             // flauta
+      else if (m.mel === 2){
+        voice('brass', n[1] - 12 + tr, t, n[2] * sd * 0.85, 0.14, 0.03, 0.1);                                                      // trompas
+        if (m.arp) voice('brass', n[1] + tr, t, n[2] * sd * 0.85, 0.05, 0.03, 0.1);                                                // y trompetas a la octava en combate
+      }
+    }
+    if (m.arp) voice('harp', ch[1 + st % 3] + 12 + tr, t, 0.3, 0.06);
+    if (m.brass && (st === 0 || st === 10)){ voice('brass', ch[0] + 12 + tr, t, sd * 5, 0.12, 0.05, 0.2); voice('brass', ch[0] + 19 + tr, t, sd * 5, 0.08, 0.05, 0.2); }   // trombones
+    if (m.alarm && st % 4 === 0) voice('str', 76 + tr, t, sd * 1.2, 0.05, 0.01, 0.1);                                              // violines repitiendo una nota
+    if (m.kick === 3){ if (st % 8 === 0 || st % 8 === 3) voice('bd', null, t, 0, 0.5); }                                           // latido
+    else if (m.kick && (m.kick === 2 ? st % 4 === 0 : st % 8 === 0)) voice('timp', ch[0] + tr, t, 0, m.kick === 2 ? 0.3 : 0.2);    // timbales en la fundamental
+    if (m.snare && (st === 4 || st === 12 || (m.snare === 2 && st >= 14))) voice('snare', null, t, 0, 0.13);
+    if (m.hat && (m.hat === 2 ? st % 2 === 0 : st % 4 === 2)) voice('hat', null, t, 0, 0.05);
+    MUS.step = (s + 1) % 64; MUS.next += sd;
+  }
+}
 const distVol = (x, y) => clamp(1 - Math.hypot(x - P.x, y - P.y) / 1100, 0.08, 1);
 
 /* ---------- efectos ---------- */
@@ -739,7 +1019,7 @@ function floatText(x, y, txt, col){ parts.push({ x, y, z: 26, vx: 0, vy: 0, vz: 
 
 /* ---------- jugador ---------- */
 // Sin estabilizador: parado el tiro va donde apuntas; en marcha o girando se abre mucho.
-const dispersion = () => 0.004 + Math.abs(P.v) * 0.0009 + Math.abs(P.w) * 0.06;
+const dispersion = () => 0.004 + (Math.abs(P.v) * 0.0009 + Math.abs(P.w) * 0.06) * U.disp;
 function fire(){
   if (state !== 'play') return;
   if (!P.breech){ say(P.ram > 0 ? 'Cargando…' : 'Recámara vacía — pulsa ' + (pad.on ? 'X' : 'R') + ' para cargar'); boom(0.08, 900, 0.06); return; }
@@ -747,13 +1027,13 @@ function fire(){
   const mx = P.x + Math.cos(P.ta) * 40, my = P.y + Math.sin(P.ta) * 40;
   shells.push({ x: mx, y: my, a, sp: 950, type: P.breech, own: 0, dist: 0 });
   P.breech = null; P.recoil = 1; shake = 7;
-  burst(mx, my, 12, 0.7, true, 15); boom(0.7, 500, 0.9);
+  burst(mx, my, 12, 0.7, true, 15); boom(0.7, 500, 0.9); MUS.heat = 4;
 }
 function load(t){
   if (state !== 'play') return;
   if (P.breech || P.ram > 0){ say('La recámara ya está cargada'); return; }
   if (P.ap <= 0){ say('Sin proyectiles БР: recoge cajas'); return; }
-  P.ap--; P.ramType = t; P.ram = RAM; boom(0.15, 500, 0.2);
+  P.ap--; P.ramType = t; P.ram = RAM * U.ram * (combo >= 3 ? 0.5 : 1); boom(0.15, 500, 0.2);   // con racha de 3 o más, carga el doble de rápido
 }
 // Ametralladora coaxial ПКТ: ráfaga rápida, poco daño, sin recarga manual. Buena contra cañones, floja contra tanques.
 function fireMG(){
@@ -780,10 +1060,14 @@ function pollPad(){
   pad.mg = Math.hypot(pad.sx, pad.sy) > 0.35;        // empujar el stick izquierdo apunta y dispara la ametralladora
   pad.big = val(1) > 0.5;                            // B mantenido: radar ampliado
   if (pad.L || pad.R || pad.tx || pad.mg || sv || sh || fireB || ap || aimB || go) pad.on = true;   // el HUD pasa a mostrar los botones del mando
-  if (state === 'off'){ if (fireB || go) insertDisc(); return; }
+  if (state === 'off'){
+    if (manDlg.open){ drawManual(); if (lf) manualCmd('left'); if (rt || fireB) manualCmd('right'); if (bk) manualCmd('back'); return; }
+    if (fireB || go){ if (mobileDlg.open) mobileDlg.close(); insertDisc(); } else if (aimB){ if (mobileDlg.open) mobileDlg.close(); openManual(); }
+    return;
+  }
   if (state === 'boot') return;
-  if (state === 'dead'){ if ((fireB || go) && performance.now() - deadAt > 900) start(false); return; }
   if (state === 'menu'){ if (up) menuCmd('up'); if (dn) menuCmd('down'); if (lf) menuCmd('left'); if (rt) menuCmd('right'); if (fireB || go) menuCmd('ok'); if (bk) menuCmd('back'); return; }
+  if (state === 'dead' || state === 'upgrade'){ if (up) pickCmd('up'); if (dn) pickCmd('down'); if (fireB || (go && state === 'dead')) pickCmd('ok'); if (bk) pickCmd('back'); return; }
   if (go){ pauseGame(); return; }                    // Start en partida: pausa
   if (fireB) fire();
   if (ap) load('AP');
@@ -791,18 +1075,24 @@ function pollPad(){
 }
 function hurtPlayer(s){
   const mgHit = s.type === 'MG', rel = Math.abs(angDiff(s.a + Math.PI, P.h));
-  const dmg = mgHit ? 1 : (rel < 1 ? 10 : rel < 2.2 ? 20 : 32) * (s.pow || 1);      // frontal / flanco / trasero; el pesado, el doble
+  const dmg = mgHit ? 1 : s.dmg || (rel < 1 ? 10 : rel < 2.2 ? 20 : 32) * (s.pow || 1);      // frontal / flanco / trasero; el pesado, el doble
   P.hp -= dmg; P.hurt = mgHit ? 0.1 : 0.35; shake = Math.max(shake, mgHit ? 2 : s.pow > 1 ? 16 : 11);
   if (mgHit){ burst(s.x, s.y, 2, 0.4, true, 12); boom(0.12, 1600, 0.06); }
   else {
     combo = 0; burst(s.x, s.y, 12, 1, true, 12); boom(0.8, 300, 0.6);
-    floatText(P.x, P.y, '−' + dmg + (rel < 1 ? ' frontal' : rel < 2.2 ? ' flanco' : ' ¡trasero!'), s.pow > 1 ? '#ff3020' : '#ff7050');
+    floatText(P.x, P.y, '−' + dmg + (s.dmg ? ' cohete' : rel < 1 ? ' frontal' : rel < 2.2 ? ' flanco' : ' ¡trasero!'), s.pow > 1 ? '#ff3020' : '#ff7050');
   }
-  if (P.hp <= 0){
-    P.hp = 0; state = 'dead'; deadAt = performance.now(); setAim(false);
-    burst(P.x, P.y, 60, 2.2, true); boom(1, 200, 1.6);
-    if (score > best){ best = score; try { localStorage.setItem('t55best', best); } catch (e){} }
-  }
+  MUS.heat = 5; playerDown();
+}
+function playerDown(){
+  if (P.hp > 0) return;
+  P.hp = 0; state = 'dead'; deadAt = performance.now(); setAim(false); PICK.sel = 0;
+  burst(P.x, P.y, 60, 2.2, true); boom(1, 200, 1.6);
+  if (score > best){ best = score; try { localStorage.setItem('t55best', best); } catch (e){} }
+}
+function blastPlayer(dmg, txt){                       // explosiones: kamikazes y morteros
+  P.hp -= dmg; P.hurt = 0.35; shake = Math.max(shake, 13); combo = 0; MUS.heat = 5;
+  floatText(P.x, P.y, '−' + dmg + ' ' + txt, '#ff7050'); playerDown();
 }
 
 function updPlayer(dt){
@@ -818,7 +1108,7 @@ function updPlayer(dt){
   p.inL = keys ? kL : pad.L; p.inR = keys ? kR : pad.R;
   for (const s of ['L', 'R']){
     const in_ = p['in' + s], v = p['v' + s];
-    const tv = SPEED * (in_ < 0 ? in_ * 0.6 : in_);  // marcha atrás al 60 %
+    const tv = SPEED * U.speed * (in_ < 0 ? in_ * 0.6 : in_);  // marcha atrás al 60 %
     const speedingUp = tv * v >= 0 && Math.abs(tv) > Math.abs(v);
     p['v' + s] = toward(v, tv, (speedingUp ? 45 : 160) * dt);
   }
@@ -832,9 +1122,9 @@ function updPlayer(dt){
       p.aimWant += p.w * dt;                                               // el casco arrastra también la puntería
       p.aimWant = p.ta + clamp(angDiff(p.aimWant, p.ta), -AIM_LEAD, AIM_LEAD);   // el punto no se aleja más de lo que cabe en la mira
     }
-    p.ta += clamp(angDiff(p.aim ? p.aimWant : cursorAngle(), p.ta), -TURRET * dt, TURRET * dt);
+    p.ta += clamp(angDiff(p.aim ? p.aimWant : cursorAngle(), p.ta), -TURRET * U.tur * dt, TURRET * U.tur * dt);
   }
-  p.ta += pad.tx * TURRET * 1.6 * dt;                // mando: stick derecho
+  p.ta += pad.tx * TURRET * U.tur * 1.6 * dt;                // mando: stick derecho
   // Ametralladora: va en su propio afuste en el centro del tanque y gira con independencia del cañón, mucho más rápido.
   p.mga += p.w * dt;
   if (pad.on){ if (Math.hypot(pad.sx, pad.sy) > 0.35) p.mga += clamp(angDiff(camH + Math.atan2(pad.sx, -pad.sy), p.mga), -MG_RATE * dt, MG_RATE * dt); }   // mando: hacia donde empujas el stick izquierdo (arriba = al frente)
@@ -849,12 +1139,12 @@ function updPlayer(dt){
     gg.fillRect(-20, -14, 6, 6); gg.fillRect(-20, 8, 6, 6); gg.restore(); groundDirty = true;
   }
   // aplastar cañones y recoger cajas
-  for (const e of enemies) if (e.alive && e.kind === 'gun' && Math.abs(p.v) > 25 && Math.hypot(e.x - p.x, e.y - p.y) < 24) killEnemy(e, '¡APLASTADO!');
+  for (const e of enemies) if (e.alive && ETYPE[e.kind].crush && Math.abs(p.v) > 25 && Math.hypot(e.x - p.x, e.y - p.y) < 24) killEnemy(e, '¡APLASTADO!');
   for (let i = crates.length - 1; i >= 0; i--){
     const c = crates[i];
     if (Math.hypot(c.x - p.x, c.y - p.y) < 26){
-      if (c.kind === 'hp'){ p.hp = Math.min(100, p.hp + 25); floatText(c.x, c.y, '+25 blindaje', '#9fd060'); }
-      else { p.ap = Math.min(MAXAMMO, p.ap + 4); p.mg = Math.min(500, p.mg + 100); floatText(c.x, c.y, '+4 БР +100 ПКТ', '#ffe060'); }
+      if (c.kind === 'hp'){ p.hp = Math.min(U.maxHp, p.hp + 30); floatText(c.x, c.y, '+30 blindaje', '#9fd060'); }
+      else { p.ap = Math.min(U.maxAp, p.ap + 4); p.mg = Math.min(500, p.mg + 100); floatText(c.x, c.y, '+4 БР +100 ПКТ', '#ffe060'); }
       blip(520, 0.18); if (c.mesh) dyn.remove(c.mesh); crates.splice(i, 1);
     }
   }
@@ -874,15 +1164,55 @@ function updEnemies(dt){
     const T = ETYPE[e.kind], dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
     e.losT -= dt;
     if (e.losT <= 0){ e.losT = 0.25; e.los = !blocked(e.x, e.y, P.x, P.y); }
+    if (e.kind === 'jeep'){                            // todoterreno: se acerca, se para y lanza cohetes lentos
+      const df = angDiff(ang, e.h); e.h += clamp(df, -T.turn * dt, T.turn * dt); e.ta = e.h;
+      if (d > T.stop || !e.los){
+        e.x += Math.cos(e.h) * T.sp * dt; e.y += Math.sin(e.h) * T.sp * dt;
+        if (pushOut(e, e.r + 1)){ e.x += Math.cos(e.h + e.side * 1.57) * T.sp * 0.8 * dt; e.y += Math.sin(e.h + e.side * 1.57) * T.sp * 0.8 * dt; }
+      } else if ((e.rl -= dt) <= 0 && Math.abs(df) < 0.15){
+        e.rl = T.rl * rnd(0.85, 1.25);
+        shells.push({ x: e.x + Math.cos(e.h) * 10, y: e.y + Math.sin(e.h) * 10, a: e.h + gauss() * 0.04, sp: 230, type: 'RK', own: 1, dist: 0, dmg: 8 });
+        burst(e.x - Math.cos(e.h) * 10, e.y - Math.sin(e.h) * 10, 5, 0.5, false, 14); boom(0.3 * distVol(e.x, e.y), 1000, 0.4);
+      }
+      continue;
+    }
+    if (e.kind === 'heli'){                            // helicóptero: vuela por encima de todo, da vueltas a tu alrededor y suelta ráfagas
+      e.los = true; e.orb = (e.orb ?? ang + Math.PI) + e.side * 0.38 * dt;
+      const tx = P.x + Math.cos(e.orb) * 210, ty = P.y + Math.sin(e.orb) * 210, td = Math.hypot(tx - e.x, ty - e.y) || 1, v = Math.min(T.sp, td * 1.2);
+      e.vx = (e.vx || 0) + ((tx - e.x) / td * v - (e.vx || 0)) * Math.min(1, dt * 1.6); e.vy = (e.vy || 0) + ((ty - e.y) / td * v - (e.vy || 0)) * Math.min(1, dt * 1.6);   // con inercia: vuela suave
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      e.h += clamp(angDiff(ang, e.h), -1.4 * dt, 1.4 * dt); e.ta = e.h;
+      if (d < 300 && (e.rl -= dt) <= 0 && Math.abs(angDiff(ang, e.h)) < 0.2){ e.burst = 5; e.rl = rnd(3.2, 4.4); }
+      if (e.burst > 0 && (e.bt -= dt) <= 0){
+        e.bt = 0.09; e.burst--;
+        shells.push({ x: e.x + Math.cos(e.h) * 12, y: e.y + Math.sin(e.h) * 12, a: e.h + gauss() * 0.07, sp: 560, type: 'MG', own: 1, dist: 0, zh: 38, fly: true });
+        boom(0.1 * distVol(e.x, e.y), 2200, 0.05);
+      }
+      if ((e.ct = (e.ct ?? 0) - dt) <= 0){ e.ct = 0.13; if (d < 600) boom(0.04 * distVol(e.x, e.y), 220, 0.06); }   // batir de palas
+      continue;
+    }
+    if (e.kind === 'mortar'){                          // mortero: no necesita verte; apunta adonde vas a estar
+      e.ta += clamp(angDiff(ang, e.ta), -0.8 * dt, 0.8 * dt); e.h = e.ta;
+      if (d < 1150 && d > 140 && (e.rl -= dt) <= 0){
+        e.rl = rnd(6.5, 8.5);
+        strikes.push({ x: clamp(P.x + Math.cos(P.h) * P.v * 1.4 + rnd(-28, 28), 10, WS - 10), y: clamp(P.y + Math.sin(P.h) * P.v * 1.4 + rnd(-28, 28), 10, WS - 10), t: 2.8, max: 2.8, r: 38 });
+        burst(e.x, e.y, 5, 0.5, false, 16); boom(0.3 * distVol(e.x, e.y), 180, 0.5);
+      }
+      continue;
+    }
     if (e.tank && (d > T.stop || !e.los)){
-      const df = angDiff(ang, e.h);
+      const df = angDiff(ang, e.h), sp = T.sp * (d > 650 ? 1.4 : 1);   // de lejos vienen a toda marcha
       e.h += clamp(df, -T.turn * dt, T.turn * dt);
-      if (Math.abs(df) < 0.6){ e.x += Math.cos(e.h) * T.sp * dt; e.y += Math.sin(e.h) * T.sp * dt; pushOut(e, e.r + 1); }
+      if (Math.abs(df) < 0.6){ e.x += Math.cos(e.h) * sp * dt; e.y += Math.sin(e.h) * sp * dt; pushOut(e, e.r + 1); }
+    } else if (T.fixed) e.h += clamp(angDiff(ang, e.h), -T.turn * dt, T.turn * dt);   // el cazacarros apunta con todo el casco
+    if (e.kind === 'boss' && (e.ct = (e.ct ?? 8) - dt) <= 0){   // el jefe pide apoyo aéreo cada poco
+      e.ct = 15;
+      if (enemies.filter(o => o.alive && o.kind === 'heli').length < 2){ spawnEnemy('heli', e.x, e.y, 80, 160); say('¡El jefe pide apoyo aéreo!'); }
     }
     const tr = e.tank ? T.tr : 0.8;
     e.ta += clamp(angDiff(ang, e.ta), -tr * dt, tr * dt);
-    if (!e.tank) e.h = e.ta;
-    const aim = Math.abs(angDiff(ang, e.ta)), mz = 28 * (T.sc || 1), mx = e.x + Math.cos(e.ta) * mz, my = e.y + Math.sin(e.ta) * mz;
+    if (T.fixed) e.ta = e.h;
+    const aim = Math.abs(angDiff(ang, e.ta)), mz = (T.mz || 28) * (T.sc || 1), mx = e.x + Math.cos(e.ta) * mz, my = e.y + Math.sin(e.ta) * mz;
     if (e.kind === 'light'){                           // ligero: ráfagas de ametralladora a corta distancia
       if (e.los && d < 300){ e.rl -= dt; if (e.rl <= 0 && aim < 0.12){ e.burst = 8; e.rl = rnd(1.6, 2.4); } }
       if (e.burst > 0 && (e.bt -= dt) <= 0){
@@ -891,12 +1221,13 @@ function updEnemies(dt){
         burst(mx, my, 1, 0.35, true, 10); boom(0.1 * distVol(e.x, e.y), 2200, 0.05);
       }
     } else if (e.los && d < 620){                      // cañón: un proyectil por recarga (el del pesado pega el doble)
-      e.rl -= dt;
-      if (e.rl <= 0 && aim < 0.05){
-        shells.push({ x: mx, y: my, a: e.ta + gauss() * (0.025 + Math.abs(P.v) * 0.0008), sp: 520, type: 'AP', own: 1, dist: 0, pow: T.pow || 1 });
+      const shoot = () => {
+        shells.push({ x: mx, y: my, a: e.ta + gauss() * (0.025 + Math.abs(P.v) * 0.0008), sp: T.ssp || 520, type: 'AP', own: 1, dist: 0, pow: T.pow || 1 });
         burst(mx, my, T.pow > 1 ? 12 : 6, T.pow > 1 ? 0.9 : 0.6, true, 12); boom((T.pow > 1 ? 0.6 : 0.4) * distVol(e.x, e.y), T.pow > 1 ? 300 : 450, 0.5);
-        e.rl = (e.tank ? T.rl : 5) * rnd(0.85, 1.2);
-      }
+      };
+      e.rl -= dt;
+      if (e.burst > 0 && (e.bt -= dt) <= 0){ e.burst--; shoot(); }      // segundo disparo de la salva
+      if (e.rl <= 0 && aim < 0.05){ shoot(); e.rl = (e.tank ? T.rl : 5) * rnd(0.85, 1.2); if (T.salvo){ e.burst = T.salvo; e.bt = 0.45; } }
     }
   }
 }
@@ -904,16 +1235,34 @@ function updEnemies(dt){
 function killEnemy(e, tag){
   e.alive = false; shake = Math.max(shake, 9);
   burst(e.x, e.y, 34, 1.6, true); boom(0.6 * distVol(e.x, e.y), 220, 1.2);
-  combo++; comboT = 6;
+  combo++; comboT = 6; MUS.heat = 5;
+  if (e.kind === 'heli'){ e.gone = true; burst(e.x, e.y, 20, 1.2, true, 45); }   // el helicóptero estalla en el aire y no deja restos
+  if (combo === 3) say('¡Racha! Carga rápida');
   const pts = ETYPE[e.kind].pts * combo;
   score += pts;
   floatText(e.x, e.y, (tag ? tag + ' ' : '') + '+' + pts + (combo > 1 ? '  ×' + combo : ''), '#ffe9a0');
   blip(300 + combo * 60);
-  if (e.tank && Math.random() < 0.8)        // solo los tanques sueltan cajas
+  if (e.tank)        // solo los tanques sueltan cajas
     crates.push({ x: e.x + rnd(-14, 14), y: e.y + rnd(-14, 14), kind: P.hp < 60 || Math.random() < 0.4 ? 'hp' : 'he' });
-  if (!enemies.some(o => o.alive)){
-    waveT = 3; score += 250 * wave; banner = 'OLEADA ' + wave + ' DESPEJADA  +' + 250 * wave; bannerT = 2.4;
-    P.hp = Math.min(100, P.hp + 15); P.ap = Math.min(MAXAMMO, P.ap + 6); P.mg = Math.min(500, P.mg + 80);
+  if (e.kind === 'boss'){ burst(e.x, e.y, 60, 2.4, true); boom(1, 160, 1.8); shake = 18; }
+  checkClear(e.kind === 'boss');
+}
+function checkClear(boss){
+  if (waveT > 0 || upT > 0 || queue.length || enemies.some(o => o.alive)) return;
+  upT = 1.8;                                            // un respiro, y a elegir mejora score += 250 * wave; banner = (boss ? '¡JEFE DESTRUIDO!' : 'OLEADA ' + wave + ' DESPEJADA') + '  +' + 250 * wave; bannerT = 2.4;
+  P.hp = Math.min(U.maxHp, P.hp + 25); P.ap = Math.min(U.maxAp, P.ap + 6); P.mg = Math.min(500, P.mg + 80);
+}
+// Granadas de mortero: caen donde marca el círculo rojo del suelo al acabarse la cuenta.
+function updStrikes(dt){
+  for (let i = strikes.length - 1; i >= 0; i--){
+    const s = strikes[i]; s.t -= dt;
+    if (s.t > 0) continue;
+    const v = distVol(s.x, s.y);
+    burst(s.x, s.y, 24, 1.3, true); boom(0.75 * v, 240, 0.9); shake = Math.max(shake, 7 * v);
+    gg.fillStyle = 'rgba(18,14,9,.55)'; gg.beginPath(); gg.arc(s.x, s.y, 15, 0, TAU); gg.fill(); groundDirty = true;   // cráter
+    if (state === 'play' && Math.hypot(P.x - s.x, P.y - s.y) < s.r) blastPlayer(12, 'mortero');
+    if (s.ring) dyn.remove(s.ring, s.fill, s.sh);
+    strikes.splice(i, 1);
   }
 }
 
@@ -926,23 +1275,23 @@ function updShells(dt){
     const cx = Math.cos(s.a), cy = Math.sin(s.a);
     while (move > 0 && !dead){
       const st = Math.min(6, move); move -= st; s.x += cx * st; s.y += cy * st; s.dist += st;
-      const mg = s.type === 'MG', range = mg ? 320 : 1000;   // la ametralladora es de corto alcance
+      const mg = s.type === 'MG', range = mg ? (s.own ? 320 : 320 * U.mgRange) : s.type === 'RK' ? 640 : 1000;   // la ametralladora es de corto alcance
       if (s.x < 0 || s.y < 0 || s.x > WS || s.y > WS || s.dist > range){ dead = true; if (!mg && s.dist > range) explode(s); break; }
-      if (inBuilding(s.x, s.y)){ dead = true; if (mg) burst(s.x, s.y, 2, 0.4, false, 12); else explode(s); break; }
+      if (!s.fly && inBuilding(s.x, s.y)){ dead = true; if (mg) burst(s.x, s.y, 2, 0.4, false, 12); else explode(s); break; }
       if (s.own === 0){
         for (const e of enemies) if (e.alive && (e.x - s.x) ** 2 + (e.y - s.y) ** 2 < (e.r + 3) ** 2){
           dead = true;
           if (mg){                                   // ametralladora: 3 impactos tumban un cañón; a un tanque apenas lo araña
             burst(s.x, s.y, 2, 0.4, true, 10);
-            e.hp -= e.kind === 'gun' ? 34 : Math.abs(angDiff(s.a + Math.PI, e.h)) < 0.9 ? 2 : 5;
+            e.hp -= ETYPE[e.kind].soft ? 34 : Math.abs(angDiff(s.a + Math.PI, e.h)) < 0.9 ? 2 : 5;
             if (e.hp <= 0) killEnemy(e);
           }
           else {
             burst(s.x, s.y, 10, 0.8, true, 12);
-            if (e.kind === 'gun') killEnemy(e);
+            if (!e.tank) killEnemy(e);
             else {
               const front = Math.abs(angDiff(s.a + Math.PI, e.h)) < 0.9;
-              e.hp -= front ? 50 : 100;
+              e.hp -= (front ? 50 : 100) * U.dmg;
               if (e.hp <= 0) killEnemy(e, front ? '' : '¡FLANCO!');
               else { floatText(e.x, e.y, 'blindaje frontal', '#cfd4b8'); boom(0.4 * distVol(e.x, e.y), 900, 0.3); }
             }
@@ -965,11 +1314,13 @@ function update(dt){
     if (p.life <= 0) parts.splice(i, 1);
   }
   if (state === 'play'){
-    updPlayer(dt); updEnemies(dt);
+    updPlayer(dt); updEnemies(dt); updQueue(dt); updStrikes(dt);
+    if (MUS.heat > 0) MUS.heat -= dt;
+    if (upT > 0 && (upT -= dt) <= 0 && state === 'play') openUpgrade();
     if (comboT > 0){ comboT -= dt; if (comboT <= 0) combo = 0; }
     if (waveT > 0){ waveT -= dt; if (waveT <= 0) spawnWave(); }
   }
-  if (state !== 'menu') updShells(dt);               // en pausa los proyectiles también se quedan quietos
+  if (state !== 'menu' && state !== 'upgrade') updShells(dt);               // en pausa los proyectiles también se quedan quietos
   if (AC){
     const k = state === 'play' ? Math.max(Math.abs(P.vL), Math.abs(P.vR)) / SPEED : 0;
     engOsc.frequency.value = 34 + k * 60;
@@ -1018,25 +1369,41 @@ function sync3D(dt){
   if (state === 'dead' && !PM.dead){ PM.dead = true; darken(PM); }
   else if (!PM.dead) for (const m of PM.mats) m.emissive.setHex(P.hurt > 0 ? 0x802010 : 0);
 
+  if (enemies.some(e => e.gone)){ for (const e of enemies) if (e.gone && e.m){ dyn.remove(e.m.hull); if (e.m.tur) dyn.remove(e.m.tur); } enemies = enemies.filter(e => !e.gone); }
   for (const e of enemies){
     if (!e.m){
       const T = ETYPE[e.kind];
-      if (e.tank){
+      if (e.kind === 'jeep') e.m = makeJeep();
+      else if (e.kind === 'heli') e.m = makeHeli();
+      else if (e.kind === 'td') e.m = makeTD();
+      else if (e.kind === 'mortar') e.m = makeMortar();
+      else if (e.tank){
         e.m = makeTank(T.cols[0], T.cols[1]); e.m.hull.scale.setScalar(T.sc); e.m.tur.scale.setScalar(T.sc);
         if (e.kind === 'light') e.m.barrel.scale.set(0.62, 0.6, 0.6);       // cañón corto y fino: es una ametralladora
-        if (e.kind === 'heavy') e.m.barrel.scale.set(1.12, 1.5, 1.5);       // cañón largo y grueso
-      } else e.m = makeGun();
+        if (e.kind === 'heavy' || e.kind === 'boss') e.m.barrel.scale.set(1.12, 1.5, 1.5);   // cañón largo y grueso
+      }
       dyn.add(e.m.hull); if (e.m.tur) dyn.add(e.m.tur);
     }
-    e.m.hull.position.set(e.x, 0, e.y); e.m.hull.rotation.y = -e.h;
+    e.m.hull.position.set(e.x, e.m.rotor ? 46 : 0, e.y); e.m.hull.rotation.y = -e.h;
     if (e.m.tur){ e.m.tur.position.set(e.x, 0, e.y); e.m.tur.rotation.y = -e.ta; }
+    if (e.m.rotor){ e.m.rotor.rotation.y += dt * 19; e.m.hull.rotation.z = -0.1; }   // morro un poco abajo, como al avanzar
     if (!e.alive && !e.m.dead){ e.m.dead = true; darken(e.m); }
     if (!e.alive && e.tank && Math.random() < dt * 6)
       parts.push({ x: e.x + rnd(-5, 5), y: e.y + rnd(-5, 5), z: 14, vx: rnd(-6, 6), vy: rnd(-6, 6), vz: rnd(25, 45), r: rnd(4, 8), life: 1.4, max: 1.4, fire: false });
   }
   for (const s of shells){
     if (!s.mesh){ s.mesh = new THREE.Mesh(shellGeo, shellMats[s.own]); if (s.type === 'MG') s.mesh.scale.set(2.4, 0.45, 0.45); else s.mesh.scale.set(s.own ? 4 : 5, s.own ? 1.5 : 1, s.own ? 1.5 : 1); dyn.add(s.mesh); }
-    s.mesh.position.set(s.x, 15, s.y); s.mesh.rotation.y = -s.a;
+    s.mesh.position.set(s.x, 15 + (s.zh ? s.zh * Math.max(0, 1 - s.dist / 190) : 0), s.y); s.mesh.rotation.y = -s.a;
+    if (s.type === 'RK' && Math.random() < dt * 28) parts.push({ x: s.x, y: s.y, z: 15, vx: rnd(-4, 4), vy: rnd(-4, 4), vz: rnd(4, 12), r: rnd(2, 4), life: 0.7, max: 0.7, fire: false });   // estela del cohete
+  }
+  for (const s of strikes){                            // aviso del mortero: aro rojo, disco que se llena y la granada cayendo
+    if (!s.ring){
+      s.ring = new THREE.Mesh(strikeRingGeo, strikeMat); s.fill = new THREE.Mesh(strikeFillGeo, strikeMat); s.sh = new THREE.Mesh(shellGeo, shellMats[1]);
+      for (const o of [s.ring, s.fill]){ o.rotation.x = -Math.PI / 2; o.position.set(s.x, 2, s.y); }
+      s.ring.scale.setScalar(s.r); s.sh.scale.set(1.6, 5, 1.6); dyn.add(s.ring, s.fill, s.sh);
+    }
+    s.fill.scale.setScalar(Math.max(0.01, s.r * (1 - s.t / s.max))); s.ring.visible = (s.t * 10 | 0) % 2 === 0 || s.t > 1;
+    s.sh.position.set(s.x, 12 + Math.max(0, s.t) * 330, s.y);
   }
   const now = performance.now() / 1000;
   for (const c of crates){
@@ -1170,7 +1537,8 @@ function drawRadar(cx, cy, R){
     g.fillRect(Math.round(cx + Math.cos(a) * rr - s2 / 2), Math.round(cy + Math.sin(a) * rr - s2 / 2), s2, s2);
   };
   for (const c of crates) blip(c.x, c.y, 2, '#f4f490');
-  for (const e of enemies) if (e.alive) blip(e.x, e.y, e.kind === 'gun' ? 2 : e.kind === 'heavy' ? 4 : 3, e.kind === 'gun' ? '#b8ffc8' : '#50ff78');
+  for (const s of strikes) blip(s.x, s.y, 3, '#ff5038');
+  for (const e of enemies) if (e.alive) blip(e.x, e.y, e.kind === 'boss' ? 5 : e.kind === 'heavy' ? 4 : e.tank ? 3 : 2, e.kind === 'heli' ? '#ff9040' : e.tank ? '#50ff78' : '#b8ffc8');
   g.globalAlpha = 1; g.restore();
   g.fillStyle = '#fff'; g.fillRect(cx - 1, cy - 1, 3, 3);
 }
@@ -1196,10 +1564,16 @@ function drawHudPsx(){
   outlined('HP', 6, 10, 9, '#cfd4b8', 'left');
   g.fillStyle = '#000'; g.fillRect(25, 5, 62, 10);
   g.fillStyle = P.hp > 50 ? '#58d030' : P.hp > 25 ? '#f0b020' : '#f03020';
-  for (let i = 0, n = Math.ceil(P.hp / 10); i < n; i++) g.fillRect(26 + i * 6, 6, 5, 8);
+  for (let i = 0, n = Math.ceil(P.hp / U.maxHp * 10); i < n; i++) g.fillRect(26 + i * 6, 6, 5, 8);
   // arriba centro: puntos y oleada
   outlined(String(score).padStart(6, '0'), W / 2, 10, 9, '#ffe9a0');
   outlined('OLEADA ' + wave, W / 2, 21, 9, '#cfd4b8');
+  const bs = enemies.find(e => e.alive && e.kind === 'boss');
+  if (bs){                                             // barra de vida del jefe
+    g.fillStyle = '#000'; g.fillRect(W / 2 - 51, 28, 102, 6);
+    g.fillStyle = '#f03020'; g.fillRect(W / 2 - 50, 29, Math.ceil(100 * bs.hp / bs.maxHp), 4);
+    outlined('JEFE', W / 2 - 56, 31, 9, '#f03020', 'right');
+  }
   // arriba derecha: radar
   radarR += ((pad.big || K.big ? 38 : 24) - radarR) * Math.min(1, frameDt * 12);   // B (o M) mantenido lo agranda, con transición suave
   const rr = Math.round(radarR);
@@ -1232,16 +1606,11 @@ function drawHudPsx(){
 
 /* ---------- menú inicial y «Cómo jugar» ---------- */
 const MENU = { page: -1, sel: 0, paused: false };    // page −1 = menú principal; 0… = páginas de ayuda
-const menuOpts = () => [MENU.paused ? 'CONTINUAR' : 'JUGAR', 'COMO JUGAR', 'SALIR'];
+const menuOpts = () => [MENU.paused ? 'CONTINUAR' : 'JUGAR', 'SALIR'];
 function menuCmd(c){
   if (MENU.page < 0){
-    if (c === 'up' || c === 'down'){ MENU.sel = (MENU.sel + (c === 'up' ? 2 : 1)) % 3; blip(330, 0.05); }
-    else if (c === 'ok'){ blip(520, 0.1); if (MENU.sel === 0) state = 'play'; else if (MENU.sel === 1) MENU.page = 0; else powerOff(); }
-  } else {
-    if (c === 'left') MENU.page = Math.max(0, MENU.page - 1);
-    else if (c === 'right' || c === 'ok'){ if (++MENU.page >= HOW.length) MENU.page = -1; }
-    else if (c === 'back') MENU.page = -1;
-    blip(330, 0.05);
+    if (c === 'up' || c === 'down'){ MENU.sel = (MENU.sel + 1) % 2; blip(330, 0.05); }
+    else if (c === 'ok'){ blip(520, 0.1); if (MENU.sel === 0) state = 'play'; else powerOff(); }
   }
 }
 const menuOptAt = () => menuOpts().findIndex((o, i) => Math.abs(M.y - (136 + i * 20)) < 9 && Math.abs(M.x - W / 2) < 100);
@@ -1327,14 +1696,26 @@ const HOW = [
       hBreech(37, 152, 2); hTxt('RECAMARA: VERDE = LISTA', 64, 152);
   } },
   { t: 'ENEMIGOS Y CAJAS', draw(){
-      g.fillStyle = '#6e6a4c'; g.fillRect(31, 46, 12, 3); g.fillStyle = '#16170f'; g.fillRect(36, 38, 2, 9);
-      hTxt('CAÑON AT: APLASTALO O 3 BALAS', 64, 46);
+      g.fillStyle = '#5a5640'; g.fillRect(29, 43, 16, 7); g.fillStyle = '#16170f'; g.fillRect(30, 49, 4, 3); g.fillRect(40, 49, 4, 3); g.fillRect(29, 40, 9, 2);
+      hTxt('TODOTERRENO: ESQUIVA SU COHETE', 64, 46);
       hTank(37, 72, 0.75, '#74746a'); hTxt('LIGERO: RAPIDO, AMETRALLADORA', 64, 70);
       hTank(37, 98, 1, '#6a6350'); hTxt('MEDIO: 2 TIROS DE FRENTE', 64, 96);
       hTank(37, 128, 1.3, '#484842'); hTxt('PESADO: LENTO, DOBLE DAÑO', 64, 126);
       hTxt('POR EL FLANCO HACES EL DOBLE', 160, 150, '#ffe9a0', 'center');
       bevel(30, 163, 14, 12, '#3f8a34', false); hTxt('+', 37, 169, '#fff', 'center'); hTxt('CAJA VERDE: BLINDAJE', 64, 169);
       bevel(30, 183, 14, 12, '#b89a20', false); hTxt('CAJA AMARILLA: MUNICION', 64, 189);
+  } },
+  { t: 'MAS PELIGROS', draw(){
+      g.fillStyle = '#3e4234'; g.fillRect(31, 46, 12, 5); g.fillRect(24, 47, 8, 2); g.fillStyle = '#cfd4b8'; g.fillRect(27, 43, 20, 1);
+      hTxt('HELICOPTERO: TE RODEA. USA LA', 64, 42); hTxt('AMETRALLADORA PARA DERRIBARLO', 64, 53);
+      g.strokeStyle = '#ff2a18'; g.lineWidth = 2; g.beginPath(); g.arc(37, 80, 9, 0, TAU); g.stroke(); g.lineWidth = 1; g.fillStyle = 'rgba(255,42,24,.5)'; g.beginPath(); g.arc(37, 80, 5, 0, TAU); g.fill();
+      hTxt('MORTERO: SAL DEL CIRCULO ROJO', 64, 80);
+      g.fillStyle = '#4e4a3a'; g.fillRect(29, 99, 14, 10); g.fillStyle = '#16170f'; g.fillRect(43, 103, 8, 2);
+      hTxt('CAZACARROS: TIRA DE LEJOS', 64, 104);
+      hTank(37, 132, 1.5, '#4a2c26'); hTxt('JEFE (OLEADA 5): DOS DISPAROS', 64, 127); hTxt('Y APOYO AEREO', 64, 138);
+      hTxt('LOS REFUERZOS LLEGAN A MITAD', 160, 160, '#d8dcc4', 'center');
+      hTxt('TRAS CADA OLEADA ELIGES UNA MEJORA', 160, 176, '#ffe9a0', 'center');
+      hTxt('3 BAJAS SEGUIDAS: CARGA RAPIDA', 160, 192, '#ffe9a0', 'center');
   } }
 ];
 function drawMenu(){
@@ -1351,14 +1732,22 @@ function drawMenu(){
     outlined(pad.on ? 'CRUCETA O STICK, Y A' : 'RATON O W S Y ENTER', W / 2, 230, 9, '#8b9872');
     return;
   }
-  const pg = HOW[MENU.page];
-  bevel(6, 6, W - 12, H - 12, '#1c2440', false); bevel(9, 9, W - 18, H - 18, '#141a30', true);
-  label(pg.t, W / 2, 24, 9, '#ffe9a0'); g.fillStyle = '#33406a'; g.fillRect(16, 33, W - 32, 1);
+}
+// Una página del manual. Se dibuja en el lienzo del manual (ver openManual), no dentro del juego.
+function drawHowPage(n){
+  const pg = HOW[n];
+  bevel(0, 0, W, H, '#1c2440', false); bevel(3, 3, W - 6, H - 6, '#141a30', true);
+  label(pg.t, W / 2, 20, 9, '#ffe9a0'); g.fillStyle = '#33406a'; g.fillRect(16, 33, W - 32, 1);
   pg.draw();
   g.fillStyle = '#33406a'; g.fillRect(16, 208, W - 32, 1);
-  label(MENU.page ? '< ANTES' : '', 16, 220, 9, '#8b9872', 'left');
-  label(MENU.page < HOW.length - 1 ? 'SIGUE >' : 'MENU >', W - 16, 220, 9, '#ffe9a0', 'right');
-  HOW.forEach((_, i) => { g.fillStyle = i === MENU.page ? '#ffe9a0' : '#33406a'; g.fillRect(W / 2 - HOW.length * 4 + i * 8, 218, 5, 5); });
+  if (pad.on){                                         // con mando: A sigue, B cierra
+    hBtn(21, 222, 'B', 5); label('CERRAR', 30, 222, 9, '#8b9872', 'left');
+    label(n < HOW.length - 1 ? 'SIGUE' : 'CERRAR', W - 30, 222, 9, '#ffe9a0', 'right'); hBtn(W - 21, 222, 'A', 5);
+  } else {
+    label(n ? '< ANTES' : '', 16, 222, 9, '#8b9872', 'left');
+    label(n < HOW.length - 1 ? 'SIGUE >' : 'CERRAR >', W - 16, 222, 9, '#ffe9a0', 'right');
+  }
+  HOW.forEach((_, i) => { g.fillStyle = i === n ? '#ffe9a0' : '#33406a'; g.fillRect(W / 2 - HOW.length * 4 + i * 8, 220, 5, 5); });
 }
 
 function drawCursor(){
@@ -1375,6 +1764,29 @@ function drawCursor(){
   }
 }
 
+function drawUpgrade(){
+  g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, W, H);
+  outlined('ELIGE UNA MEJORA', W / 2, 44, 20, '#ffe060');
+  UP.forEach((o, i) => {
+    const on = i === PICK.sel, y = pickY(i), lv = U.lv[o.k] || 0;
+    bevel(18, y - 18, W - 36, 36, on ? '#28346a' : '#141a30', false);
+    if (on && (performance.now() / 250 | 0) % 2) label('>', 30, y - 7, 9, '#f03020');
+    label(o.t, 40, y - 7, 9, on ? '#ffe9a0' : '#cfd4b8', 'left');
+    if (lv) label('NV ' + (lv + 1), W - 28, y - 7, 9, '#58d030', 'right');
+    label(o.d, 28, y + 8, 9, on ? '#fff' : '#8b9872', 'left');
+  });
+  if (pad.on){ outlined('ELEGIR', W / 2 - 34, 200, 9, '#8b9872', 'right'); hStick(W / 2 - 18, 200, 'L'); outlined('ACEPTAR', W / 2 + 74, 200, 9, '#8b9872', 'right'); hBtn(W / 2 + 86, 200, 'A', 5); }
+  else outlined('RATON O W S Y ENTER', W / 2, 200, 9, '#8b9872');
+}
+function drawDead(){
+  overlay('GAME OVER', ['TANQUE DESTRUIDO', '', score + ' PUNTOS - OLEADA ' + wave, score >= best && score > 0 ? '¡NUEVO RÉCORD!' : 'RÉCORD: ' + best, '', '', '', '', '']);
+  DEAD_OPTS.forEach((o, i) => {
+    const on = i === PICK.sel, y = pickY(i);
+    label(o, W / 2, y, 9, on ? '#ffe9a0' : '#8b9872');
+    if (on && (performance.now() / 250 | 0) % 2) label('>', W / 2 - o.length * 4 - 12, y, 9, '#f03020');
+  });
+  if (pad.on){ hBtn(W / 2 - 48, 198, 'A', 5); label('ELEGIR', W / 2 - 38, 198, 9, '#8b9872', 'left'); hBtn(W / 2 + 22, 198, 'B', 5); label('MENU', W / 2 + 32, 198, 9, '#8b9872', 'left'); }
+}
 function overlay(title, lines){
   g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(0, 0, W, H);
   const lh = 12, bh = lines.length * lh + 70, bw = Math.min(W - 16, 520), x0 = Math.round((W - bw) / 2), y0 = Math.round((H - bh) / 2);
@@ -1389,12 +1801,12 @@ function frame(t){
   const dt = clamp((t - (frame.t || t)) / 1000, 0, 0.05); frame.t = t; frameDt = dt;
   pollPad();
   if (state === 'off' || state === 'boot'){ drawPower(dt); requestAnimationFrame(frame); return; }
-  update(dt); sync3D(dt);
+  update(dt); sync3D(dt); musicTick();
   renderer.setRenderTarget(rt); renderer.render(scene, cam);          // a 320×240 en un búfer…
   renderer.setRenderTarget(null); renderer.render(postScene, postCam);   // …y ampliado con tramado de 15 bits
   g.clearRect(0, 0, W, H);
   if (state === 'menu') drawMenu(); else { drawField(); drawHudPsx(); }
-  if (state === 'dead') overlay('GAME OVER', ['TANQUE DESTRUIDO', '', score + ' PUNTOS - OLEADA ' + wave, score >= best && score > 0 ? '¡NUEVO RÉCORD!' : 'RÉCORD: ' + best, '', '>PULSA CLIC O START', 'ESC: MENU']);
+  if (state === 'dead') drawDead(); else if (state === 'upgrade') drawUpgrade();
   drawCursor();
   requestAnimationFrame(frame);
 }
@@ -1421,7 +1833,7 @@ addEventListener('mousedown', ev => {
   if (kn){ ev.preventDefault(); audioInit(); knob = { o: kn, x: ev.clientX, y: ev.clientY, v: TVSET[kn.k] }; return; }   // agarrar una perilla
   if (state === 'off' || state === 'boot') return;   // con la tele apagada el ratón es del navegador (bajar, clic en el disco)
   ev.preventDefault(); audioInit(); toScr(ev);
-  if (state === 'dead'){ if (performance.now() - deadAt > 900) start(false); return; }
+  if (state === 'dead' || state === 'upgrade'){ pickClick(ev.button); return; }
   if (state === 'menu'){ menuClick(ev.button); return; }
   if (ev.button === 2){ setAim(true); return; }      // clic derecho mantenido: apuntar por la mira
   if (ev.button !== 0) return;
@@ -1436,7 +1848,7 @@ addEventListener('mousemove', ev => {
     return;
   }
   toScr(ev);
-  if (state === 'menu') menuHover();
+  if (state === 'menu') menuHover(); else if (state === 'dead' || state === 'upgrade') pickHover();
 });
 // Entrar o salir de la mira. Con ratón se captura el puntero, igual que al apuntar en un shooter.
 function setAim(on){
@@ -1457,6 +1869,11 @@ function key(ev, down){
   if (state === 'menu'){
     const c = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', Enter: 'ok', Space: 'ok', Escape: 'back', Backspace: 'back' }[ev.code];
     if (c){ ev.preventDefault(); if (down && !ev.repeat){ pad.on = false; menuCmd(c); } }
+    return;
+  }
+  if (state === 'dead' || state === 'upgrade'){
+    const c = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', Enter: 'ok', Space: 'ok', Escape: 'back', Backspace: 'back' }[ev.code];
+    if (c){ ev.preventDefault(); if (down && !ev.repeat){ pad.on = false; pickCmd(c); } }
     return;
   }
   const s = { KeyW: 'F', KeyS: 'B', KeyA: 'R', KeyD: 'L', Space: 'mg', KeyM: 'big' }[ev.code];   // A gira a la izquierda, D a la derecha; M amplía el radar
@@ -1559,16 +1976,43 @@ function buildCase(){
   caseG = new THREE.Group(); cScene.add(caseG);
   const tray = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.16), plastic); tray.position.z = -0.08;
   disc = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.08, 0.025, 40), [L({ color: 0x111114 }), L({ map: discTex }), L({ color: 0x0a0a0e })]);
-  disc.rotation.x = Math.PI / 2; disc.position.set(0.12, 0, 0.03);
+  disc.rotation.x = Math.PI / 2; disc.position.set(DISC_X, 0, 0.03);   // el disco asoma por el lado: es lo que se pulsa para jugar
+  caseG.position.x = -0.42;
   lidPivot = new THREE.Group(); lidPivot.position.set(-1.42, 0, 0.06);
   const lid = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.05), [clear, clear, clear, clear, L({ map: coverTex }), L({ color: 0xd8d8d0 })]);
   lid.position.set(1.42, 0, 0.03); lidPivot.add(lid);
   caseG.add(tray, disc, lidPivot);
   caseCv.addEventListener('mousemove', ev => { CM.x = ev.offsetX / caseCv.clientWidth * 2 - 1; CM.y = ev.offsetY / caseCv.clientHeight * 2 - 1; CM.over = true; });
   caseCv.addEventListener('mouseleave', () => { CM.over = false; });
-  caseCv.addEventListener('click', insertDisc);
-  caseCv.addEventListener('keydown', ev => { if (ev.code === 'Enter' || ev.code === 'Space'){ ev.preventDefault(); insertDisc(); } });
+  // Clic en el disco: jugar. Clic en la caja: abrir el manual.
+  const overDisc = ev => { cRay.setFromCamera(cNdc.set(ev.offsetX / caseCv.clientWidth * 2 - 1, 1 - ev.offsetY / caseCv.clientHeight * 2), cCam); return cRay.intersectObjects([disc, lidPivot.children[0]])[0]?.object === disc; };
+  caseCv.addEventListener('mousemove', ev => { CM.disc = overDisc(ev); caseCv.title = CM.disc ? 'Meter el disco y jugar' : 'Leer el manual'; });
+  caseCv.addEventListener('click', ev => { if (overDisc(ev)) insertDisc(); else openManual(); });
+  caseCv.addEventListener('keydown', ev => { if (ev.code === 'Enter' || ev.code === 'Space'){ ev.preventDefault(); insertDisc(); } else if (ev.code === 'KeyI'){ ev.preventDefault(); openManual(); } });
 }
+const DISC_X = 1.05, cRay = new THREE.Raycaster(), cNdc = new THREE.Vector2();
+// El manual: las páginas de instrucciones, dibujadas con las mismas piezas que el HUD pero en su propio lienzo.
+const manDlg = document.getElementById('manual'), manCv = document.getElementById('manCv'), MAN = { page: 0 };
+function drawManual(){
+  const g0 = g; g = manCv.getContext('2d'); g.imageSmoothingEnabled = false;
+  try { drawHowPage(MAN.page); } finally { g = g0; }
+  document.getElementById('manPrev').style.visibility = MAN.page ? 'visible' : 'hidden';
+  document.getElementById('manNext').textContent = MAN.page < HOW.length - 1 ? 'SIGUE >' : 'CERRAR';
+}
+function openManual(){ if (state !== 'off' || ins.on || manDlg.open) return; MAN.page = 0; W = 320; H = 240; manDlg.showModal(); drawManual(); }
+function manualCmd(c){
+  if (!manDlg.open) return;
+  if (c === 'back') return manDlg.close();
+  MAN.page += c === 'left' ? -1 : 1;
+  if (MAN.page >= HOW.length) return manDlg.close();
+  MAN.page = Math.max(0, MAN.page); drawManual();
+}
+manCv.addEventListener('click', ev => manualCmd(ev.offsetX < manCv.clientWidth / 3 ? 'left' : 'right'));
+document.getElementById('manPrev').addEventListener('click', ev => { ev.stopPropagation(); manualCmd('left'); });
+document.getElementById('manNext').addEventListener('click', ev => { ev.stopPropagation(); manualCmd('right'); });
+manDlg.querySelector('.bar .close').addEventListener('click', () => manDlg.close());
+manDlg.addEventListener('click', ev => { if (ev.target === manDlg) manDlg.close(); });
+manDlg.addEventListener('keydown', ev => { const c = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Enter: 'right', Space: 'right' }[ev.code]; if (c && ev.target.tagName !== 'BUTTON'){ ev.preventDefault(); manualCmd(c); } });
 function insertDisc(){ if (state !== 'off' || ins.on) return; ins.on = true; ins.t = 0; audioInit(); boom(0.25, 1800, 0.12); }
 
 function caseFrame(t){
@@ -1579,16 +2023,18 @@ function caseFrame(t){
   // inclinación: balanceo suave en reposo; con el ratón encima, la portada se gira hacia el cursor
   let ty = Math.sin(now * 0.8) * 0.2, tx = Math.sin(now * 0.6) * 0.05, sc = 1;
   if (ins.on){ ty = 0.3; tx = -0.08; }
+  else if (manDlg.open){ ty = 0.5; tx = 0; }
   else if (CM.over){ ty = CM.x * 0.55; tx = CM.y * 0.42; sc = 1.06; }
   const k = Math.min(1, dt * 7);
   caseG.rotation.y += (ty - caseG.rotation.y) * k; caseG.rotation.x += (tx - caseG.rotation.x) * k;
   caseG.scale.setScalar(caseG.scale.x + (sc - caseG.scale.x) * k);
   caseG.position.y = ins.on ? 0 : Math.sin(now * 1.3) * 0.04;
-  if (ins.on){                                                                // se abre la tapa, el disco sale girando y sube hacia la tele
+  lidPivot.rotation.y += ((manDlg.open ? -1.1 : 0) - lidPivot.rotation.y) * k;   // con el manual abierto, la tapa se entreabre
+  if (!ins.on) disc.position.x += ((DISC_X + (CM.disc && CM.over ? 0.16 : 0)) - disc.position.x) * k;   // el disco se asoma un poco más al señalarlo
+  if (ins.on){                                                                // el disco termina de salir girando y sube hacia la tele
     ins.t += dt;
-    lidPivot.rotation.y = -2.5 * ease(ins.t / 0.6);
     const up = Math.max(0, ins.t - 0.95);
-    disc.position.z = 0.03 + ease((ins.t - 0.4) / 0.5) * 1.1; disc.position.y = up * up * 16;
+    disc.position.x = DISC_X + ease(ins.t / 0.5) * 0.9; disc.position.z = 0.03 + ease((ins.t - 0.3) / 0.5) * 0.9; disc.position.y = up * up * 16;
     disc.rotateY(dt * (3 + ins.t * 16));
     if (ins.t > 1.2 && !ins.scrolled){ ins.scrolled = true; scrollTo({ top: 0, behavior: 'smooth' }); }
     if (ins.t > 2.2) powerOn();
@@ -1658,7 +2104,7 @@ function showGame(){
   });
 }
 // logo de la esquina y ventana de letra pequeña
-function drawLogo(){ for (const id of ['logo', 'logo2']){ const c = document.getElementById(id).getContext('2d'); c.clearRect(0, 0, 32, 32); drawSpark(c, 15, 15, 14); } }
+function drawLogo(){ for (const id of ['logo', 'logo2', 'logo3', 'logo4']){ const c = document.getElementById(id).getContext('2d'); c.clearRect(0, 0, 32, 32); drawSpark(c, 15, 15, 14); } }
 const legalDlg = document.getElementById('legal');
 document.querySelectorAll('[data-legal]').forEach(b => b.addEventListener('click', () => {
   legalDlg.showModal(); legalDlg.scrollTop = 0;
@@ -1670,7 +2116,30 @@ legalDlg.addEventListener('click', ev => { if (ev.target === legalDlg) legalDlg.
 /* ---------- arranque ---------- */
 { const f = document.createElement('canvas'); f.width = f.height = 32; drawSpark(f.getContext('2d'), 15, 15, 14);   // favicon: el logo
   const l = document.createElement('link'); l.rel = 'icon'; l.type = 'image/png'; l.href = f.toDataURL('image/png'); document.head.appendChild(l); }
-if (matchMedia('(hover: none) and (pointer: coarse)').matches) document.getElementById('touch').hidden = false;   // móvil o tableta sin ratón
+// Móvil o tableta sin ratón: aviso de que hace falta un mando, con su dibujo y el estado de la conexión.
+function drawPadArt(){
+  const c = document.getElementById('padArt').getContext('2d'), R = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  R('#000', 14, 8, 84, 34); R('#000', 6, 16, 100, 40); R('#000', 2, 30, 30, 32); R('#000', 80, 30, 30, 32);          // contorno
+  R('#5c6068', 16, 10, 80, 30); R('#5c6068', 8, 18, 96, 36); R('#5c6068', 4, 32, 26, 28); R('#5c6068', 82, 32, 26, 28);
+  R('#7a7f88', 16, 10, 80, 3); R('#3e4148', 34, 50, 44, 4);                                                          // brillo y sombra
+  R('#16171a', 18, 26, 18, 6); R('#16171a', 24, 20, 6, 18);                                                          // cruceta
+  for (const [k, x, y] of [['Y', 86, 18], ['X', 78, 26], ['B', 94, 26], ['A', 86, 34]]){ R('#000', x - 1, y - 1, 8, 8); R(BTN_COL[k], x, y, 6, 6); }
+  for (const x of [38, 62]){ R('#000', x, 38, 12, 12); R('#2a2c30', x + 1, 39, 10, 10); R('#4a4e56', x + 3, 41, 6, 6); }   // sticks
+  R('#16171a', 48, 22, 6, 3); R('#16171a', 58, 22, 6, 3);                                                             // select y start
+}
+const mobileDlg = document.getElementById('mobile'), isMobile = matchMedia('(hover: none) and (pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+function padFound(){
+  const st = document.getElementById('padState'); st.className = 'ok'; st.textContent = '● MANDO DETECTADO';
+  document.getElementById('mobOk').textContent = 'A JUGAR';
+  const tc = document.getElementById('touch'); tc.textContent = 'MANDO LISTO: A JUGAR, Y MANUAL'; tc.style.color = '#58d030';
+}
+document.getElementById('mobOk').addEventListener('click', () => mobileDlg.close());
+addEventListener('gamepadconnected', padFound);
+if (isMobile){
+  const tc = document.getElementById('touch'); tc.hidden = false; tc.textContent = 'CONECTA UN MANDO PARA JUGAR';
+  drawPadArt(); mobileDlg.showModal();
+  if (navigator.getGamepads && [...navigator.getGamepads()].some(p => p && p.connected)) padFound();
+}   // móvil o tableta sin ratón
 applyTV();
 try { buildCase(); } catch (e){ console.error(e); }
 drawLogo(); showGame();
