@@ -1,0 +1,266 @@
+<!-- Plantilla del manual. tools/make-manual.py la imprime a manual.pdf; {{COVER}} y {{DISC}} se cambian por el arte del juego. -->
+<style>
+  @page{size:148mm 210mm;margin:0}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#fff}
+  body{font-family:"DejaVu Sans","Liberation Sans",Arial,sans-serif;color:#1d1d1b;font-size:9.2pt;line-height:1.45}
+  .pg{width:148mm;height:210mm;padding:14mm 13mm 16mm;position:relative;overflow:hidden;break-after:page}
+  .pg:last-child{break-after:auto}
+  .num{position:absolute;bottom:7mm;left:0;right:0;text-align:center;font-size:7.5pt;color:#5a5a5a;letter-spacing:.08em}
+  .num b{color:#b8281c}
+  .px{font-family:"Press Start 2P",monospace;letter-spacing:.02em}
+  h1{font-family:"Press Start 2P",monospace;font-size:12pt;font-weight:normal;margin:0 0 3mm;padding-bottom:2.5mm;border-bottom:2.5px solid #1d1d1b;letter-spacing:.03em}
+  h1 small{display:block;font-family:"DejaVu Sans",Arial,sans-serif;font-size:7.5pt;color:#b8281c;letter-spacing:.2em;margin-bottom:2mm;text-transform:uppercase}
+  h2{font-size:10.5pt;margin:4.5mm 0 1.5mm;color:#b8281c;text-transform:uppercase;letter-spacing:.06em}
+  p{margin:0 0 2.2mm}
+  table{width:100%;border-collapse:collapse;margin:1.5mm 0 3mm;font-size:8.6pt}
+  th{background:#1d1d1b;color:#fff;text-align:left;padding:1.4mm 2mm;font-weight:bold;font-size:7.8pt;letter-spacing:.06em;text-transform:uppercase}
+  td{padding:1.3mm 2mm;border-bottom:.5pt solid #c9c6ba;vertical-align:top}
+  tr:nth-child(even) td{background:#f4f2ea}
+  .k{display:inline-block;min-width:5.2mm;padding:.3mm 1.2mm;border:1px solid #1d1d1b;border-bottom-width:2px;border-radius:1.2mm;font-size:7.4pt;font-weight:bold;text-align:center;background:#fff;line-height:1.3}
+  .b{display:inline-block;width:5.2mm;height:5.2mm;border-radius:50%;color:#fff;font-size:7pt;font-weight:bold;text-align:center;line-height:5.2mm}
+  .bA{background:#3a8a3a}.bB{background:#b8281c}.bX{background:#2d5fa8}.bY{background:#c89a10}
+  .note{border-left:3px solid #b8281c;background:#f7ece9;padding:2mm 3mm;margin:3mm 0;font-size:8.6pt}
+  .tip{border-left:3px solid #3a8a3a;background:#ecf3e8;padding:2mm 3mm;margin:3mm 0;font-size:8.6pt}
+  .tip>b:first-child,.note>b:first-child{text-transform:uppercase;letter-spacing:.05em;font-size:7.8pt}
+  ul{margin:0 0 2.5mm;padding-left:4.5mm}
+  li{margin-bottom:1.4mm}
+  .stat{display:inline-block;font-size:7.2pt;background:#1d1d1b;color:#fff;padding:.2mm 1.5mm;margin-right:1mm;border-radius:.8mm}
+  .foe{border:1px solid #c9c6ba;padding:2.2mm 3mm;margin-bottom:2.4mm;break-inside:avoid}
+  .foe h3{margin:0 0 1mm;font-size:9.5pt;display:flex;justify-content:space-between;align-items:baseline}
+  .foe h3 span{font-size:7.6pt;color:#b8281c;font-weight:bold}
+  .foe p{margin:0 0 1mm;font-size:8.5pt}
+  .cover{background:#ecebe2;padding:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .cover .bar{width:100%;height:9mm;background:#111}
+  .cover .logo{font-family:"Press Start 2P",monospace;font-size:8pt;letter-spacing:.3em;margin-top:13mm;color:#444}
+  .cover .t1{font-family:"Press Start 2P",monospace;font-size:21pt;margin-top:9mm;letter-spacing:.04em}
+  .cover .rule{width:96mm;height:3px;background:#111;margin:5mm 0 4mm}
+  .cover .t2{font-size:11pt;letter-spacing:.35em;font-weight:bold}
+  .cover img{width:92mm;margin-top:10mm;border:3px solid #111;image-rendering:pixelated}
+  .cover .foot{margin-top:auto;margin-bottom:7mm;font-size:7.5pt;letter-spacing:.2em;color:#555}
+  .toc td{border:0;padding:1.1mm 0;background:none!important}
+  .toc td:last-child{text-align:right;color:#b8281c;font-weight:bold}
+  .back{background:#111;color:#ddd;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .back img{width:58mm;border-radius:50%;margin-bottom:9mm;box-shadow:0 0 0 2px #888}
+</style>
+
+<section class="pg cover">
+  <div class="bar"></div>
+  <div class="logo">VIBECODED</div>
+  <div class="t1">INSTRUCCIONES</div>
+  <div class="rule"></div>
+  <div class="t2">T-55 ARCADE GAME</div>
+  <img src="{{COVER}}" alt="">
+  <div class="foot">DISCO 01 · ACCIÓN · 1 JUGADOR</div>
+  <div class="bar"></div>
+</section>
+
+<section class="pg">
+  <h1>PARA EMPEZAR</h1>
+  <h2>Cargar el juego</h2>
+  <p>Haz clic en la caja para abrirla. Haz clic en el disco o pulsa <span class="k">Enter</span> para jugar.</p>
+  <p>Con mando: <span class="b bA">A</span> abre la caja y mete el disco, <span class="b bY">Y</span> abre este manual, <span class="b bB">B</span> cierra la caja.</p>
+  <h2>Objetivo</h2>
+  <p>Destruye a todos los enemigos de cada oleada. Después de cada oleada eliges una mejora. La partida termina cuando tu blindaje llega a 0.</p>
+  <h2>Menú</h2>
+  <p>Muévete con <span class="k">W</span> <span class="k">S</span>, las flechas o la cruceta. Confirma con <span class="k">Enter</span> o <span class="b bA">A</span>.</p>
+  <h2>Pausa</h2>
+  <p><span class="k">Esc</span> o <span class="k">Start</span>. Desde la pausa puedes seguir o volver al menú.</p>
+  <h2>Fin de la partida</h2>
+  <p>Elige <b>Reintentar</b> o <b>Volver al menú</b>. Tu mejor puntuación se guarda en el navegador.</p>
+  <div class="note"><b>Aviso:</b> el juego tiene destellos y sacudidas de pantalla.</div>
+  <div class="num">— <b>2</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONTROLES: TECLADO</h1>
+  <table>
+    <tr><th style="width:40%">Tecla</th><th>Acción</th></tr>
+    <tr><td><span class="k">W</span> <span class="k">S</span></td><td>Avanzar / marcha atrás</td></tr>
+    <tr><td><span class="k">A</span> <span class="k">D</span></td><td>Girar</td></tr>
+    <tr><td>Ratón</td><td>Girar la torreta</td></tr>
+    <tr><td>Clic izquierdo</td><td>Disparar el cañón</td></tr>
+    <tr><td>Clic derecho</td><td>Mira de precisión</td></tr>
+    <tr><td><span class="k">Q</span></td><td>Mira fija (sin mantener)</td></tr>
+    <tr><td><span class="k">Espacio</span></td><td>Ametralladora</td></tr>
+    <tr><td><span class="k">R</span></td><td>Cargar un proyectil</td></tr>
+    <tr><td><span class="k">M</span> (mantener)</td><td>Ampliar el radar</td></tr>
+    <tr><td><span class="k">Esc</span></td><td>Pausa</td></tr>
+  </table>
+  <div class="num">— <b>3</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONTROLES: MANDO</h1>
+  <table>
+    <tr><th style="width:40%">Botón</th><th>Acción</th></tr>
+    <tr><td><span class="k">L2</span> <span class="k">R2</span></td><td>Oruga izquierda / derecha hacia adelante</td></tr>
+    <tr><td><span class="k">L1</span> <span class="k">R1</span></td><td>Oruga izquierda / derecha hacia atrás</td></tr>
+    <tr><td>Stick derecho</td><td>Girar la torreta</td></tr>
+    <tr><td><span class="b bA">A</span></td><td>Disparar el cañón</td></tr>
+    <tr><td><span class="b bY">Y</span></td><td>Mira de precisión</td></tr>
+    <tr><td><span class="b bX">X</span></td><td>Cargar un proyectil</td></tr>
+    <tr><td><span class="b bB">B</span> (mantener)</td><td>Ampliar el radar</td></tr>
+    <tr><td>Stick izquierdo</td><td>Apuntar y disparar la ametralladora</td></tr>
+    <tr><td><span class="k">Start</span></td><td>Pausa</td></tr>
+  </table>
+  <p>Cada gatillo mueve una oruga. Las dos a la vez: recto. Una sola: giras hacia el otro lado.</p>
+  <div class="num">— <b>4</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>DISPARAR Y CARGAR</h1>
+  <h2>Cargar</h2>
+  <p>Cada disparo vacía la recámara. Pulsa <span class="k">R</span> o <span class="b bX">X</span> para cargar el siguiente proyectil. El indicador de recámara (abajo a la izquierda) muestra el estado:</p>
+  <table>
+    <tr><th style="width:30%">Estado</th><th>Significado</th></tr>
+    <tr><td style="color:#c0281c"><b>VACÍA</b></td><td>Sin proyectil</td></tr>
+    <tr><td style="color:#8a6608"><b>CARGA</b></td><td>Cargando (menos de 1 segundo)</td></tr>
+    <tr><td style="color:#3a8a3a"><b>LISTA</b></td><td>Puedes disparar</td></tr>
+  </table>
+  <h2>Proyectiles</h2>
+  <p>Empiezas con 12. Puedes llevar 18.</p>
+  <h2>Mira de precisión</h2>
+  <p>Acerca la vista para tiros largos. Solo afecta al cañón. Parado aciertas; en movimiento el disparo se desvía.</p>
+  <div class="num">— <b>5</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>AMETRALLADORA Y BLINDAJE</h1>
+  <h2>Ametralladora</h2>
+  <p>No se recarga. Empiezas con 250 balas; máximo 500. Hace poco daño a los tanques. Úsala contra todoterrenos, morteros y helicópteros.</p>
+  <h2>Daño que recibes</h2>
+  <p>Empiezas con 100 de blindaje.</p>
+  <table>
+    <tr><th>Impacto</th><th style="width:22%">Daño</th></tr>
+    <tr><td>Proyectil de frente</td><td>10</td></tr>
+    <tr><td>Proyectil en el lateral</td><td>20</td></tr>
+    <tr><td>Proyectil por detrás</td><td>32</td></tr>
+    <tr><td>Cohete de todoterreno</td><td>8</td></tr>
+    <tr><td>Mortero</td><td>12</td></tr>
+  </table>
+  <p>Los proyectiles del tanque pesado y del jefe hacen el doble.</p>
+  <h2>Daño que haces</h2>
+  <p>Tus disparos al lateral de un tanque enemigo hacen el doble.</p>
+  <div class="num">— <b>6</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>LA PANTALLA</h1>
+  <table>
+    <tr><th style="width:28%">Indicador</th><th>Qué muestra</th></tr>
+    <tr><td><b>Blindaje</b></td><td>Barra verde. A 0, fin de la partida.</td></tr>
+    <tr><td><b>Radar</b></td><td>Enemigos y cajas cercanos. <span class="k">M</span> o <span class="b bB">B</span> lo amplía.</td></tr>
+    <tr><td><b>Brújula</b></td><td>Aguja roja: el cañón. Aguja blanca: la ametralladora.</td></tr>
+    <tr><td><b>Orugas</b></td><td>Velocidad de cada oruga. Rojo: marcha atrás.</td></tr>
+    <tr><td><b>Recámara</b></td><td>Estado del cañón y proyectiles restantes.</td></tr>
+    <tr><td><b>Puntos</b></td><td>Puntuación, oleada y racha.</td></tr>
+  </table>
+  <h2>Música</h2>
+  <p>La música cambia según la situación: calma, combate, blindaje bajo, jefe y mira de precisión.</p>
+  <div class="num">— <b>7</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>ENEMIGOS</h1>
+  <div class="foe"><h3>Todoterreno <span>120 PUNTOS</span></h3>
+    <p>Van en pareja. Disparan cohetes lentos que se pueden esquivar. Puedes aplastarlos.</p></div>
+  <div class="foe"><h3>Tanque ligero <span>200 PUNTOS</span></h3>
+    <p>Muy rápido. Solo tiene ametralladora.</p></div>
+  <div class="foe"><h3>Tanque medio <span>300 PUNTOS</span></h3>
+    <p>Dos impactos de frente o uno en el lateral.</p></div>
+  <div class="foe"><h3>Tanque pesado <span>600 PUNTOS</span></h3>
+    <p>Lento y muy resistente. Su torreta gira despacio. Su daño es doble.</p></div>
+  <div class="num">— <b>8</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>ENEMIGOS</h1>
+  <div class="foe"><h3>Mortero <span>250 PUNTOS</span></h3>
+    <p>Dispara por encima de los edificios. Un círculo rojo en el suelo marca dónde caerá: sal de él. Puedes aplastarlo.</p></div>
+  <div class="foe"><h3>Helicóptero <span>400 PUNTOS</span></h3>
+    <p>Vuela a tu alrededor y dispara ráfagas. Derríbalo con la ametralladora.</p></div>
+  <div class="foe"><h3>Cazacarros <span>350 PUNTOS</span></h3>
+    <p>Sin torreta: gira entero para apuntar. Dispara de lejos y rápido.</p></div>
+  <div class="foe"><h3>Jefe <span>2500 PUNTOS</span></h3>
+    <p>Sale en la oleada 5 y luego cada 5 oleadas. Dispara dos proyectiles seguidos, hace daño doble y llama helicópteros.</p></div>
+  <div class="num">— <b>9</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>OLEADAS</h1>
+  <table>
+    <tr><th style="width:18%">Oleada</th><th>Enemigos</th></tr>
+    <tr><td>1</td><td>2 todoterrenos, 1 tanque medio</td></tr>
+    <tr><td>2</td><td>2 todoterrenos, tanque medio, tanque ligero. Refuerzo: helicóptero</td></tr>
+    <tr><td>3</td><td>2 todoterrenos, tanque pesado, mortero. Refuerzos: cazacarros, 2 todoterrenos</td></tr>
+    <tr><td>4</td><td>4 todoterrenos, tanque medio, cazacarros, mortero. Refuerzos: tanque ligero, helicóptero</td></tr>
+    <tr><td>5</td><td>Jefe, mortero, 2 todoterrenos. Refuerzos: tanque ligero, helicóptero</td></tr>
+    <tr><td>6+</td><td>Más enemigos en cada oleada. Jefe cada 5 oleadas.</td></tr>
+  </table>
+  <p>Los refuerzos llegan a mitad de la oleada.</p>
+  <h2>Al terminar una oleada</h2>
+  <ul>
+    <li>+250 × número de oleada en puntos</li>
+    <li>+25 de blindaje, +6 proyectiles, +80 balas</li>
+    <li>Eliges una mejora</li>
+  </ul>
+  <div class="num">— <b>10</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CAJAS Y RACHAS</h1>
+  <h2>Cajas</h2>
+  <p>Los tanques destruidos dejan una caja. Pasa por encima para cogerla.</p>
+  <table>
+    <tr><th style="width:30%">Caja</th><th>Contenido</th></tr>
+    <tr><td style="color:#3a8a3a"><b>Verde</b></td><td>+30 de blindaje</td></tr>
+    <tr><td style="color:#8a6608"><b>Amarilla</b></td><td>+4 proyectiles, +100 balas</td></tr>
+  </table>
+  <p>Con menos de 60 de blindaje, siempre sale verde.</p>
+  <h2>Racha</h2>
+  <p>Los puntos de cada baja se multiplican por la racha: la 2.ª baja seguida ×2, la 3.ª ×3, etc.</p>
+  <p>La racha se pierde si pasan 6 segundos sin bajas o si te dan.</p>
+  <p>Con racha de 3 o más, cargas el doble de rápido.</p>
+  <div class="num">— <b>11</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>MEJORAS</h1>
+  <p>Tras cada oleada eliges 1 de 3 mejoras al azar. Se acumulan.</p>
+  <table>
+    <tr><th style="width:32%">Mejora</th><th>Efecto</th></tr>
+    <tr><td><b>Motor</b></td><td>+12 % de velocidad</td></tr>
+    <tr><td><b>Torreta</b></td><td>Gira un 25 % más rápido</td></tr>
+    <tr><td><b>Cargador</b></td><td>Carga un 15 % más rápido</td></tr>
+    <tr><td><b>Blindaje</b></td><td>+20 de blindaje máximo</td></tr>
+    <tr><td><b>Bodega</b></td><td>+4 proyectiles de capacidad</td></tr>
+    <tr><td><b>Ametralladora</b></td><td>+25 % de alcance</td></tr>
+    <tr><td><b>Estabilizador</b></td><td>Más precisión en movimiento</td></tr>
+    <tr><td><b>Munición</b></td><td>+20 % de daño del cañón</td></tr>
+    <tr><td><b>Reparación</b></td><td>+50 de blindaje (solo si te falta)</td></tr>
+    <tr><td><b>Suministros</b></td><td>Proyectiles y balas al máximo</td></tr>
+  </table>
+  <div class="num">— <b>12</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONSEJOS</h1>
+  <ul>
+    <li>Carga justo después de cada disparo.</li>
+    <li>Recibe los disparos de frente. Por detrás hacen el triple.</li>
+    <li>Rodea a los tanques y dispárales al lateral.</li>
+    <li>Derriba los helicópteros con la ametralladora en cuanto aparezcan.</li>
+    <li>Si ves un círculo rojo, muévete.</li>
+    <li>Usa los edificios para cubrirte.</li>
+    <li>Para el tanque antes de un tiro largo.</li>
+  </ul>
+  <div class="num">— <b>13</b> —</div>
+</section>
+
+<section class="pg back">
+  <img src="{{DISC}}" alt="">
+  <div class="px" style="font-size:12pt;color:#ffe060">T-55 ARCADE GAME</div>
+  <p style="margin-top:5mm;font-size:8pt;letter-spacing:.2em">VIBECODED</p>
+  <p style="margin-top:14mm;font-size:7pt;color:#aaa;max-width:100mm;line-height:1.6">Proyecto de aficionado, gratuito y sin ánimo de lucro. No afiliado a Sony Interactive Entertainment ni a Anthropic. Tipografía Press Start 2P, licencia SIL Open Font License 1.1.</p>
+</section>

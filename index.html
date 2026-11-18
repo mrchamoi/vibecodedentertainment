@@ -19,7 +19,9 @@
   #down{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:12px;color:#ffe9a0;animation:blink 1s steps(2) infinite}
   #shelf{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
          background:radial-gradient(ellipse at 50% 42%,#2a2233 0%,#0b0a0d 62%)}
-  #case{width:min(72vh,92vw);height:min(72vh,92vw);image-rendering:pixelated;cursor:pointer}
+  #caseWrap{position:relative;width:min(96vw,128vh);aspect-ratio:16/9;overflow:hidden}
+  #case{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:pointer}
+
   #hint{font-size:12px;color:#ffe9a0;margin:4px 0 18px;animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){#down,#hint{animation:none}}
@@ -62,11 +64,6 @@
   dialog .close{background:#2b3325;border:0;color:#fff;font-size:12px;padding:8px 10px;cursor:pointer;
                 box-shadow:inset 2px 2px 0 #8b9872,inset -2px -2px 0 #0b0e09}
   dialog .close:hover{background:#3b4632;color:#ffe9a0}
-  /* Manual del juego: el librillo que viene en la caja */
-  #manual{max-width:700px}
-  #manual .body{padding:14px;text-align:center}
-  #manCv{display:block;width:100%;max-width:640px;margin:0 auto;image-rendering:pixelated;cursor:pointer;box-shadow:0 0 0 2px #000}
-  #manual .nav{display:flex;justify-content:space-between;max-width:640px;margin:12px auto 0}
   /* Aviso para móviles: aquí se juega con mando */
   #mobile{max-width:520px}
   #mobile .body{text-align:center;padding:18px 18px 24px}
@@ -92,10 +89,10 @@
 <!-- La estantería: la carátula del juego elegido, la lista de juegos y la letra pequeña -->
 <div id="shelf">
   <h2>ELIGE UN JUEGO</h2>
-  <canvas id="case" role="button" tabindex="0" aria-label="Juego: pulsa Enter para meter el disco y jugar, o la tecla I para leer el manual"></canvas>
+  <div id="caseWrap"><canvas id="case" role="button" tabindex="0" aria-label="Caja del juego: Enter la abre; abierta, la tecla I abre el manual en PDF y Enter mete el disco"></canvas></div>
   <div id="gname"></div>
   <div id="ggenre"></div>
-  <div id="hint">DISCO: JUGAR · CAJA: MANUAL</div>
+  <div id="hint">CLIC EN LA CAJA PARA ABRIRLA</div>
   <div id="touch" hidden>ESTE JUEGO NECESITA TECLADO Y RATON, O UN MANDO</div>
   <div id="games"></div>
   <footer>
@@ -116,11 +113,6 @@
   </div>
 </dialog>
 
-<dialog id="manual">
-  <div class="bar"><canvas id="logo4" width="32" height="32"></canvas><h3>MANUAL</h3><button class="close">X CERRAR</button></div>
-  <div class="body"><canvas id="manCv" width="320" height="240" role="img" aria-label="Página del manual con los controles del juego"></canvas>
-  <div class="nav"><button class="close" id="manPrev">&lt; ANTES</button><button class="close" id="manNext">SIGUE &gt;</button></div></div>
-</dialog>
 
 <dialog id="legal">
   <div class="bar"><canvas id="logo2" width="32" height="32"></canvas><h3>AVISO LEGAL</h3><button class="close">X CERRAR</button></div>
@@ -173,6 +165,7 @@
   </div>
 </dialog>
 
+<script src="music/tracks.js"></script>
 <script src="vendor/three.min.js"></script>
 <script>
 'use strict';
@@ -531,7 +524,8 @@ function powerOff(){
   document.documentElement.style.overflow = ''; document.getElementById('down').style.display = '';
   cv.style.cursor = ''; drawTV(false);
   ins.on = false; ins.t = 0; ins.scrolled = false;
-  if (lidPivot){ lidPivot.rotation.y = 0; disc.position.set(DISC_X, 0, 0.03); disc.rotation.set(Math.PI / 2, 0, 0); }
+  CASE.open = false; CASE.t = 0; updateHint();
+  if (lidPivot){ lidPivot.rotation.y = 0; disc.position.set(0, 0, 0.03); disc.rotation.set(Math.PI / 2, 0, 0); }
   document.getElementById('shelf').scrollIntoView({ behavior: 'smooth' });
 }
 addEventListener('resize', resize); resize();
@@ -721,7 +715,7 @@ function reset(){
 // Tipos de enemigo. sp = velocidad, turn = giro del casco, tr = giro de la torreta, stop = distancia a la que se para,
 // rl = recarga del cañón, pow = multiplicador de daño, sc = escala del modelo.
 // Mejoras: tras cada oleada se ofrecen tres al azar y eliges una. U guarda lo acumulado en la partida.
-let U, UP = [], upT = 0;
+let U, UP = [], upT = 0, retreatT = 0;
 const newU = () => ({ speed: 1, tur: 1, ram: 1, maxHp: 100, maxAp: MAXAMMO, mgRange: 1, disp: 1, dmg: 1, lv: {} });
 const UPG = [
   { k: 'speed',   t: 'MOTOR',         d: '+12% DE VELOCIDAD',                 f: u => u.speed *= 1.12 },
@@ -864,8 +858,7 @@ function audioInit(){
       if (AC.createStereoPanner){ const pn = AC.createStereoPanner(); pn.pan.value = panTo; lvl.connect(pn).connect(master); } else lvl.connect(master);
       src.start(); lfo.start(); trk[side] = { lvl, lfo, pan: panTo };
     }
-    MUS.gain = AC.createGain(); MUS.gain.gain.value = 0.1;
-    MUS.lp = AC.createBiquadFilter(); MUS.lp.type = 'lowpass'; MUS.lp.frequency.value = 16000; MUS.gain.connect(MUS.lp).connect(master); buildSamples();
+    MUS.gain = AC.createGain(); MUS.gain.gain.value = 0.3; MUS.gain.connect(master); loadMusic();
   } catch (e){ AC = null; }
 }
 function boom(vol, freq, dur){
@@ -885,126 +878,57 @@ function blip(freq, dur = 0.12){
 }
 
 /* ---------- música ----------
-   Una sola melodía (4 compases de 16 semicorcheas) que suena siempre. Según lo que pasa en la partida cambian
-   el tempo, el tono y los instrumentos que la acompañan: ver MODES. */
-const MEL = [   // [paso, nota MIDI, duración en pasos]
-  [0, 76, 3], [3, 76, 1], [4, 81, 4], [8, 79, 2], [10, 76, 2], [12, 72, 4],
-  [16, 74, 3], [19, 74, 1], [20, 77, 4], [24, 76, 2], [26, 74, 2], [28, 72, 2], [30, 69, 2],
-  [32, 71, 3], [35, 71, 1], [36, 74, 4], [40, 79, 4], [44, 77, 2], [46, 74, 2],
-  [48, 76, 4], [52, 68, 2], [54, 71, 2], [56, 76, 6], [62, 76, 2]];
-const CHORD = [[45, 57, 60, 64], [41, 53, 57, 60], [43, 55, 59, 62], [40, 52, 56, 59]];   // bajo + tríada de cada compás
-const MODES = {
-  menu:   { bpm: 76,  tr: -2, pad: 1, mel: 1, bass: 1 },                                              // lenta y desnuda
-  calm:   { bpm: 100, tr: 0,  mel: 2, bass: 2, hat: 1, kick: 1 },                                     // sin enemigos a la vista
-  fight:  { bpm: 126, tr: 0,  mel: 2, bass: 3, hat: 2, kick: 2, snare: 1, arp: 1 },                   // combate
-  danger: { bpm: 146, tr: 1,  mel: 2, bass: 3, hat: 2, kick: 2, snare: 2, arp: 1, alarm: 1 },         // poco blindaje
-  boss:   { bpm: 134, tr: -5, mel: 2, bass: 3, hat: 2, kick: 2, snare: 2, arp: 1, brass: 1 },         // jefe: grave y con metales
-  shop:   { bpm: 88,  tr: 0,  pad: 1, mel: 1, bass: 2, hat: 1 },                                      // eligiendo mejora
-  dead:   { bpm: 58,  tr: -4, pad: 1, mel: 1 }                                                        // fin de la partida
-};
-const MUS = { step: 0, next: 0, bpm: 76, mode: 'menu', tr: -2, heat: 0, gain: null };
+   Una sola canción grabada en varias variaciones (OGG dentro de music/tracks.js, generadas con tools/render-music.js a 22 kHz y
+   comprimidas en ADPCM de 4 bits como en la consola). Según lo que pasa en pantalla se cambia de variación con un
+   fundido corto, entrando en el mismo punto de la canción para que la melodía siga sin saltos. */
+const TRACKS = ['menu', 'calm', 'fight', 'danger', 'boss', 'shop', 'dead', 'aim'];
+const MUS = { heat: 0, gain: null, buf: {}, cur: null, mode: '', rate: 1, lastSw: 0 };
 function musicMode(){
   if (state === 'dead') return 'dead';
   if (state === 'upgrade') return 'shop';
   if (state !== 'play') return 'menu';
+  if (P.aim) return 'aim';
   if (P.hp <= 30) return 'danger';
   if (enemies.some(e => e.alive && e.kind === 'boss')) return 'boss';
   return MUS.heat > 0 || enemies.some(e => e.alive && e.los && (e.x - P.x) ** 2 + (e.y - P.y) ** 2 < 270000) ? 'fight' : 'calm';
 }
-// Instrumentos. Como en la consola, la música no sale de osciladores sino de muestras cortas de instrumentos
-// (cuerdas, metal, flauta, arpa, contrabajo, timbal, caja…) a 22 kHz, que se afinan cambiando su velocidad,
-// con un máximo de 24 voces a la vez y una reverberación de sala por encima. Las muestras se fabrican al arrancar.
-const SMP = {}, SR = 22050;
-let voices = [];
-function buildSamples(){
-  const noise = () => Math.random() * 2 - 1;
-  const mk = (sec, fn) => {
-    const b = AC.createBuffer(1, Math.round(sec * SR), SR), d = b.getChannelData(0); fn(d, d.length);
-    let m = 0; for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i]));
-    if (m) for (let i = 0; i < d.length; i++) d[i] /= m;
-    return b;
-  };
-  // suma de armónicos a frecuencias enteras: en un búfer de 1 s el bucle cierra sin chasquido
-  const harm = (f, amp, det, rnd_) => mk(1, (d, n) => {
-    for (const df of det) for (let h = 1; h <= 24; h++){
-      const a = amp(h, (f + df) * h); if (a < 0.002) continue;
-      const w = TAU * (f + df) * h / SR, ph = rnd_ ? Math.random() * TAU : 0;
-      for (let i = 0; i < n; i++) d[i] += a * Math.sin(w * i + ph);
-    }
-  });
-  const base = f => 69 + 12 * Math.log2(f / 440);
-  // cuerda pulsada (Karplus-Strong): arpa y contrabajo en pizzicato
-  const pluck = (f, sec, damp) => { const L = Math.round(SR / f); return { base: base(SR / (L + 0.5)), b: mk(sec, (d, n) => {
-    const buf = new Float32Array(L); let p = 0, last = 0;
-    for (let i = 0; i < L; i++) last = buf[i] = 0.45 * noise() + 0.55 * last;
-    for (let i = 0; i < n; i++){ const nx = (p + 1) % L; d[i] = buf[p]; buf[p] = (buf[p] + buf[nx]) * 0.5 * damp; p = nx; }
-  }) }; };
-  SMP.str   = { loop: true, base: base(262), b: harm(262, (h, hz) => 1 / h / (1 + (hz / 3200) ** 2), [-1, 0, 1], true) };            // sección de cuerdas
-  SMP.brass = { loop: true, base: base(262), b: harm(262, (h, hz) => (0.25 + Math.exp(-(((hz - 1100) / 900) ** 2))) / Math.sqrt(h) / (1 + (hz / 4200) ** 4), [0, 1], false) };   // metales
-  SMP.flute = { loop: true, base: base(524), b: harm(524, h => [1, 0.3, 0.1, 0.04, 0.015][h - 1] || 0, [0], false) };
-  SMP.harp  = pluck(262, 0.6, 0.994);
-  SMP.bass  = pluck(65.4, 0.8, 0.997);
-  SMP.timp  = { base: base(98), b: mk(0.9, (d, n) => { for (let i = 0; i < n; i++){ const t = i / SR, w = TAU * 98 * t;
-    d[i] = Math.sin(w) * Math.exp(-3.5 * t) + 0.5 * Math.sin(w * 1.5) * Math.exp(-5 * t) + 0.3 * Math.sin(w * 1.99) * Math.exp(-7 * t) + 0.5 * noise() * Math.exp(-70 * t); } }) };
-  SMP.bd    = { b: mk(0.45, (d, n) => { let ph = 0; for (let i = 0; i < n; i++){ const t = i / SR; ph += TAU * (48 + 70 * Math.exp(-t * 30)) / SR; d[i] = Math.sin(ph) * Math.exp(-9 * t); } }) };   // bombo
-  SMP.snare = { b: mk(0.28, (d, n) => { let lp = 0; for (let i = 0; i < n; i++){ const t = i / SR, x = noise(); lp += 0.35 * (x - lp); d[i] = (x - lp) * Math.exp(-20 * t) * 0.8 + Math.sin(TAU * 190 * t) * Math.exp(-28 * t) * 0.5; } }) };
-  SMP.hat   = { b: mk(0.1, (d, n) => { let pv = 0; for (let i = 0; i < n; i++){ const x = noise(); d[i] = (x - pv) * Math.exp(-70 * i / SR); pv = x; } }) };
-  // reverberación: respuesta de sala hecha con ruido que se apaga
-  const ir = AC.createBuffer(2, AC.sampleRate * 1.3 | 0, AC.sampleRate);
-  for (let c = 0; c < 2; c++){ const d = ir.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = noise() * Math.exp(-4.2 * i / AC.sampleRate); }
-  const cvr = AC.createConvolver(), wet = AC.createGain(); cvr.buffer = ir; wet.gain.value = 0.24;
-  MUS.lp.connect(cvr).connect(wet).connect(master);
-}
-// Toca una muestra a la altura pedida. dur = cuánto se sostiene (las de bucle) o cuándo se corta (las percusivas; 0 = entera).
-function voice(k, midi, t, dur, vol, atk = 0.008, rel = 0.08){
-  const sm = SMP[k]; if (!sm) return;
-  voices = voices.filter(e => e > t); if (voices.length >= 24) return;      // sin voces libres, la nota se pierde
-  const sr = AC.createBufferSource(), ga = AC.createGain(), rate = midi == null ? 1 : 2 ** ((midi - sm.base) / 12);
-  sr.buffer = sm.b; sr.loop = !!sm.loop; sr.playbackRate.value = rate;
-  const hold = sm.loop ? Math.max(atk, dur) : dur > 0 ? Math.min(dur, sm.b.duration / rate) : 0;
-  ga.gain.setValueAtTime(0.0001, t); ga.gain.linearRampToValueAtTime(vol, t + atk);
-  if (hold){ ga.gain.setValueAtTime(vol, t + hold); ga.gain.linearRampToValueAtTime(0.0001, t + hold + rel); }
-  const end = hold ? t + hold + rel + 0.02 : t + sm.b.duration / rate;
-  sr.connect(ga).connect(MUS.gain); sr.start(t); sr.stop(end); voices.push(end);
-}
-// Se llama en cada fotograma y programa con un poco de antelación las notas que tocan (así el ritmo no depende de los fps).
-function musicTick(){
-  if (!AC || AC.state !== 'running' || !MUS.lp) return;
-  const now = AC.currentTime;
-  if (MUS.next < now) MUS.next = now + 0.05;
-  while (MUS.next < now + 0.13){
-    const s = MUS.step, t = MUS.next, bar = s >> 4, st = s & 15, ch = CHORD[bar];
-    if (st % 4 === 0) MUS.mode = musicMode();          // los instrumentos cambian al pulso…
-    const aim = state === 'play' && P.aim, base = MODES[MUS.mode];
-    // Por la mira: todo se frena y se apaga, como si se contuviera la respiración. Quedan las cuerdas, la flauta y un latido.
-    const m = aim ? { ...base, bpm: base.bpm * 0.72, pad: 1, mel: 1, hat: 0, snare: 0, arp: 0, alarm: 0, kick: 3 } : base;
-    MUS.lp.frequency.setTargetAtTime(aim ? 750 : 16000, t, 0.12);
-    if (st === 0) MUS.tr = m.tr + (MUS.mode === 'calm' || MUS.mode === 'fight' || MUS.mode === 'danger' ? clamp(wave - 1, 0, 4) : 0);   // …y el tono, al compás: sube con cada oleada
-    MUS.bpm += (m.bpm - MUS.bpm) * 0.3;                // el tempo se desliza hasta el nuevo
-    const sd = 15 / MUS.bpm, tr = MUS.tr;
-    if (m.pad && st === 0) for (let i = 1; i < 4; i++) voice('str', ch[i] + tr, t, sd * 15, 0.05, 0.3, 0.5);                       // cuerdas sosteniendo el acorde
-    if (m.bass === 1 && st === 0) voice('str', ch[0] + tr, t, sd * 14, 0.1, 0.2, 0.4);                                             // violonchelos
-    if (m.bass === 2 && st % 2 === 0) voice('bass', ch[0] + tr + (st % 8 === 6 ? 12 : 0), t, 0, 0.3);                              // contrabajo en pizzicato
-    if (m.bass === 3 && st % 2 === 0){
-      voice('bass', ch[0] + tr + (st % 4 === 2 ? 12 : 0), t, 0, 0.34);
-      if (st % 4 === 0) voice('str', ch[0] + 12 + tr, t, sd * 1.4, 0.07, 0.02, 0.1);                                               // cuerdas graves en staccato
-    }
-    for (const n of MEL) if (n[0] === s){
-      if (m.mel === 1) voice('flute', n[1] + tr, t, n[2] * sd * 0.9, 0.1, 0.04, 0.15);                                             // flauta
-      else if (m.mel === 2){
-        voice('brass', n[1] - 12 + tr, t, n[2] * sd * 0.85, 0.14, 0.03, 0.1);                                                      // trompas
-        if (m.arp) voice('brass', n[1] + tr, t, n[2] * sd * 0.85, 0.05, 0.03, 0.1);                                                // y trompetas a la octava en combate
-      }
-    }
-    if (m.arp) voice('harp', ch[1 + st % 3] + 12 + tr, t, 0.3, 0.06);
-    if (m.brass && (st === 0 || st === 10)){ voice('brass', ch[0] + 12 + tr, t, sd * 5, 0.12, 0.05, 0.2); voice('brass', ch[0] + 19 + tr, t, sd * 5, 0.08, 0.05, 0.2); }   // trombones
-    if (m.alarm && st % 4 === 0) voice('str', 76 + tr, t, sd * 1.2, 0.05, 0.01, 0.1);                                              // violines repitiendo una nota
-    if (m.kick === 3){ if (st % 8 === 0 || st % 8 === 3) voice('bd', null, t, 0, 0.5); }                                           // latido
-    else if (m.kick && (m.kick === 2 ? st % 4 === 0 : st % 8 === 0)) voice('timp', ch[0] + tr, t, 0, m.kick === 2 ? 0.3 : 0.2);    // timbales en la fundamental
-    if (m.snare && (st === 4 || st === 12 || (m.snare === 2 && st >= 14))) voice('snare', null, t, 0, 0.13);
-    if (m.hat && (m.hat === 2 ? st % 2 === 0 : st % 4 === 2)) voice('hat', null, t, 0, 0.05);
-    MUS.step = (s + 1) % 64; MUS.next += sd;
+function loadMusic(){
+  const pack = window.T55_MUSIC; if (!pack) return;
+  for (const k of TRACKS){
+    if (!pack[k]) continue;
+    const bin = atob(pack[k]), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    AC.decodeAudioData(a.buffer).then(b => { MUS.buf[k] = sealLoop(b, (window.T55_LOOP || {})[k]); }).catch(() => {});
   }
+}
+// Cada pista trae música de sobra antes y después del tramo que se repite ([ls, le] en T55_LOOP).
+// Para que la costura no se note, el principio del tramo se funde con lo que sonaba justo después del final:
+// al saltar del final al principio, la onda sigue exactamente igual que si no hubiera salto.
+function sealLoop(b, lp){
+  if (!lp){ b.ls = 0; b.le = b.duration; return b; }
+  const sr = b.sampleRate, a = Math.round(lp[0] * sr), e = Math.round(lp[1] * sr), F = Math.min(Math.round(sr * 0.05), b.length - e, e - a);
+  for (let c = 0; c < b.numberOfChannels; c++){
+    const d = b.getChannelData(c);
+    for (let i = 0; i < F; i++){ const w = i / F; d[a + i] = d[e + i] * (1 - w) + d[a + i] * w; }
+  }
+  b.ls = a / sr; b.le = e / sr; return b;
+}
+function musicTick(){
+  if (!AC || AC.state !== 'running' || !MUS.gain) return;
+  const m = musicMode(), now = AC.currentTime, buf = MUS.buf[m];
+  // en combate la canción sube un semitono por oleada (más aguda y más rápida, como subir la velocidad de la cinta)
+  const rate = m === 'calm' || m === 'fight' || m === 'danger' ? 2 ** (clamp(wave - 1, 0, 3) / 12) : 1;
+  if (!buf || (m === MUS.mode && rate === MUS.rate)) return;
+  if (MUS.cur && m !== 'aim' && MUS.mode !== 'aim' && now - MUS.lastSw < 1.2) return;   // sin cambios a cada rato
+  let frac = 0;
+  if (MUS.cur){
+    const c = MUS.cur, len = c.le - c.ls; frac = ((c.off - c.ls + (now - c.t0) * c.rate) % len) / len;   // en qué punto de la canción iba
+    c.g.gain.cancelScheduledValues(now); c.g.gain.setTargetAtTime(0, now, 0.18); c.src.stop(now + 1.2);
+  }
+  const src = AC.createBufferSource(), g = AC.createGain();
+  src.buffer = buf; src.loop = true; src.loopStart = buf.ls; src.loopEnd = buf.le; src.playbackRate.value = rate;
+  g.gain.setValueAtTime(0, now); g.gain.setTargetAtTime(1, now, m === 'aim' || MUS.mode === 'aim' ? 0.06 : 0.18);
+  const off = buf.ls + frac * (buf.le - buf.ls); src.connect(g).connect(MUS.gain); src.start(now, off);
+  MUS.cur = { src, g, t0: now, off, rate, ls: buf.ls, le: buf.le }; MUS.mode = m; MUS.rate = rate; MUS.lastSw = now;
 }
 const distVol = (x, y) => clamp(1 - Math.hypot(x - P.x, y - P.y) / 1100, 0.08, 1);
 
@@ -1061,8 +985,10 @@ function pollPad(){
   pad.big = val(1) > 0.5;                            // B mantenido: radar ampliado
   if (pad.L || pad.R || pad.tx || pad.mg || sv || sh || fireB || ap || aimB || go) pad.on = true;   // el HUD pasa a mostrar los botones del mando
   if (state === 'off'){
-    if (manDlg.open){ drawManual(); if (lf) manualCmd('left'); if (rt || fireB) manualCmd('right'); if (bk) manualCmd('back'); return; }
-    if (fireB || go){ if (mobileDlg.open) mobileDlg.close(); insertDisc(); } else if (aimB){ if (mobileDlg.open) mobileDlg.close(); openManual(); }
+    if (pad.on !== pad.hintOn){ pad.hintOn = pad.on; updateHint(); }          // al usar un mando, la ayuda de la caja pasa a sus botones
+    if ((fireB || go || aimB) && mobileDlg.open){ mobileDlg.close(); return; }
+    if (CASE.open){ if (aimB) openManual(); if (fireB || go) insertDisc(); if (bk) closeCase(); }
+    else if (fireB || go || aimB) openCase();
     return;
   }
   if (state === 'boot') return;
@@ -1192,6 +1118,7 @@ function updEnemies(dt){
       continue;
     }
     if (e.kind === 'mortar'){                          // mortero: no necesita verte; apunta adonde vas a estar
+      if (e.retreat){ e.x -= Math.cos(ang) * 45 * dt; e.y -= Math.sin(ang) * 45 * dt; continue; }   // retirada: se aleja y deja de tirar
       e.ta += clamp(angDiff(ang, e.ta), -0.8 * dt, 0.8 * dt); e.h = e.ta;
       if (d < 1150 && d > 140 && (e.rl -= dt) <= 0){
         e.rl = rnd(6.5, 8.5);
@@ -1319,6 +1246,12 @@ function update(dt){
     if (upT > 0 && (upT -= dt) <= 0 && state === 'play') openUpgrade();
     if (comboT > 0){ comboT -= dt; if (comboT <= 0) combo = 0; }
     if (waveT > 0){ waveT -= dt; if (waveT <= 0) spawnWave(); }
+    // Si solo quedan morteros y no faltan refuerzos, sin escolta se retiran y la oleada se da por ganada.
+    const left = enemies.filter(e => e.alive);
+    if (waveT <= 0 && upT <= 0 && !queue.length && left.length && left.every(e => e.kind === 'mortar')){
+      if (!left[0].retreat){ for (const e of left) e.retreat = true; say('Los morteros se retiran'); retreatT = 3; }
+      else if ((retreatT -= dt) <= 0){ for (const e of left){ e.alive = false; e.gone = true; } checkClear(false); }
+    }
   }
   if (state !== 'menu' && state !== 'upgrade') updShells(dt);               // en pausa los proyectiles también se quedan quietos
   if (AC){
@@ -1619,9 +1552,7 @@ function menuClick(btn){
   if (MENU.page < 0){ const i = menuOptAt(); if (btn === 0 && i >= 0){ MENU.sel = i; menuCmd('ok'); } }
   else menuCmd(btn === 2 ? 'back' : M.x < W / 3 ? 'left' : 'right');                       // clic a la izquierda: atrás; resto: adelante
 }
-// piezas para dibujar las páginas de ayuda
-const hKey = (x, y, t, w = 14) => { bevel(x, y, w, 14, '#2b3325', false); label(t, x + w / 2, y + 7, 9, '#fff'); };
-const hTxt = (t, x, y, col = '#d8dcc4', al = 'left') => label(t, x, y, 9, col, al);
+// piezas de los botones del mando que salen en pantalla
 const BTN_COL = { A: '#34a23a', B: '#d83030', X: '#2f6fd8', Y: '#e0b020' };   // colores de los botones del mando
 function hBtn(x, y, t, r = 6){                       // botón redondo del mando, con su color y su letra
   g.fillStyle = '#000'; g.beginPath(); g.arc(x, y, r + 1, 0, TAU); g.fill();
@@ -1638,86 +1569,6 @@ function hStick(x, y, t){                            // stick analógico: base, 
   label(t, x, y - 1, 9, '#d8dcc4');
   g.fillStyle = '#58d030'; for (const d of [-1, 1]) for (let i = 0; i < 3; i++) g.fillRect(x + d * (13 + i) - (d < 0 ? 0 : 1), y - (2 - i), 1, (2 - i) * 2 + 1);   // flechas hacia fuera
 }
-function hMouse(x, y, btn){                          // ratón con un botón iluminado (0 izq, 2 der)
-  bevel(x, y, 22, 32, '#8a8f84', false); g.fillStyle = '#0b0e09'; g.fillRect(x + 10, y + 1, 1, 12); g.fillRect(x + 1, y + 13, 20, 1);
-  g.fillStyle = '#f03020'; g.fillRect(btn === 0 ? x + 2 : x + 12, y + 2, 8, 10);
-}
-function hTank(x, y, k, col){                        // tanque visto desde arriba, mirando hacia arriba
-  g.fillStyle = '#16170f'; g.fillRect(x - 6 * k, y - 8 * k, 3 * k, 16 * k); g.fillRect(x + 3 * k, y - 8 * k, 3 * k, 16 * k);
-  g.fillStyle = col; g.fillRect(x - 4 * k, y - 7 * k, 8 * k, 14 * k);
-  g.fillStyle = '#16170f'; g.fillRect(x - Math.max(1, k) / 2, y - 12 * k, Math.max(1, k), 10 * k);
-  g.fillStyle = '#8b9872'; g.fillRect(x - 2 * k, y - 3 * k, 4 * k, 5 * k);
-}
-function hBreech(x, y, st){                          // recámara: 0 vacía, 1 cargando, 2 lista
-  g.fillStyle = '#6a7064'; g.beginPath(); g.arc(x, y, 14, 0, TAU); g.fill();
-  g.fillStyle = '#050505'; g.beginPath(); g.arc(x, y, 10, 0, TAU); g.fill();
-  if (st){ g.fillStyle = '#d8a838'; g.beginPath(); g.arc(x, y, st === 2 ? 10 : 5, 0, TAU); g.fill(); }
-}
-const HOW = [
-  { t: 'MOVER EL TANQUE', draw(){
-      hKey(40, 46, 'W'); hKey(24, 62, 'A'); hKey(40, 62, 'S'); hKey(56, 62, 'D');
-      hTxt('W S  AVANZAR Y ATRAS', 84, 53); hTxt('A D  GIRAR', 84, 69);
-      hKey(22, 94, 'L2', 22); hKey(48, 94, 'R2', 22); hTxt('MANDO: ORUGA IZQ Y DER', 84, 101);
-      hKey(22, 112, 'L1', 22); hKey(48, 112, 'R1', 22); hTxt('MANDO: MARCHA ATRAS', 84, 119);
-      hTank(160, 164, 2, '#56533a');
-      g.fillStyle = '#58d030'; for (const x of [140, 178]){ g.fillRect(x, 152, 2, 22); g.fillRect(x - 2, 154, 6, 2); g.fillRect(x - 1, 152, 4, 2); }
-      hTxt('CADA GATILLO MUEVE UNA ORUGA', 160, 198, '#ffe9a0', 'center');
-  } },
-  { t: 'APUNTAR Y DISPARAR', draw(){
-      hMouse(28, 42, 0); hTxt('CLIC IZQ: CAÑON', 64, 58);
-      hMouse(28, 80, 2); hTxt('CLIC DER: MIRA DE PRECISION', 64, 96);
-      hKey(20, 120, 'ESPACIO', 62); hTxt('AMETRALLADORA', 90, 127);
-      hStick(30, 150, 'R'); hTxt('GIRA', 50, 150); hBtn(102, 150, 'A'); hTxt('CAÑON', 113, 150);
-      hBtn(176, 150, 'Y'); hTxt('MIRA', 187, 150); hBtn(240, 150, 'B'); hTxt('RADAR', 251, 150);
-      hStick(30, 174, 'L'); hTxt('AMETRALLADORA: APUNTA Y DISPARA', 50, 174);
-      hTxt('LA MIRA ES SOLO PARA EL CAÑON', 160, 190, '#ffe9a0', 'center');
-      hTxt('PARADO ACIERTAS. EN MARCHA NO.', 160, 201, '#ffe9a0', 'center');
-  } },
-  { t: 'RECARGAR', draw(){
-      hBreech(70, 66, 0); hBreech(160, 66, 1); hBreech(250, 66, 2);
-      hTxt('>', 115, 66, '#8b9872', 'center'); hTxt('>', 205, 66, '#8b9872', 'center');
-      hTxt('VACIA', 70, 90, '#f03020', 'center'); hTxt('CARGA', 160, 90, '#f0b020', 'center'); hTxt('LISTA', 250, 90, '#58d030', 'center');
-      hTxt('CADA DISPARO VACIA LA RECAMARA', 160, 118, '#d8dcc4', 'center');
-      hKey(70, 136, 'R'); hTxt('O', 94, 143); hBtn(116, 143, 'X'); hTxt('CARGA UN PROYECTIL', 130, 143);
-      hTxt('LA AMETRALLADORA NO SE RECARGA', 160, 180, '#ffe9a0', 'center');
-  } },
-  { t: 'LA PANTALLA', draw(){
-      g.fillStyle = '#000'; g.fillRect(18, 45, 38, 10); g.fillStyle = '#58d030'; for (let i = 0; i < 6; i++) g.fillRect(19 + i * 6, 46, 5, 8);
-      hTxt('BLINDAJE: A CERO, FIN', 64, 50);
-      g.fillStyle = '#03120a'; g.beginPath(); g.arc(37, 74, 10, 0, TAU); g.fill(); g.strokeStyle = 'rgba(60,220,100,.6)'; g.lineWidth = 1;
-      g.beginPath(); g.arc(37, 74, 9.5, 0, TAU); g.stroke(); g.beginPath(); g.arc(37, 74, 5, 0, TAU); g.stroke(); g.fillStyle = '#50ff78'; g.fillRect(41, 69, 3, 3);
-      hTxt('RADAR: ENEMIGOS Y CAJAS', 64, 74);
-      g.fillStyle = '#14170f'; g.beginPath(); g.arc(37, 98, 10, 0, TAU); g.fill(); g.strokeStyle = '#6a7064'; g.beginPath(); g.arc(37, 98, 9.5, 0, TAU); g.stroke();
-      g.strokeStyle = '#f03020'; g.lineWidth = 2; g.beginPath(); g.moveTo(37, 98); g.lineTo(43, 92); g.stroke(); g.lineWidth = 1;
-      g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(37.5, 98.5); g.lineTo(32.5, 94.5); g.stroke();
-      hTxt('BRUJULA: ROJO CAÑON, BLANCO', 64, 93); hTxt('AMETRALLADORA', 64, 104);
-      g.fillStyle = '#000'; g.fillRect(27, 111, 8, 22); g.fillRect(38, 111, 8, 22); g.fillStyle = '#ffe9a0'; g.fillRect(28, 114, 6, 8); g.fillStyle = '#f03020'; g.fillRect(39, 122, 6, 8);
-      hTxt('ORUGAS: ROJO = MARCHA ATRAS', 64, 122);
-      hBreech(37, 152, 2); hTxt('RECAMARA: VERDE = LISTA', 64, 152);
-  } },
-  { t: 'ENEMIGOS Y CAJAS', draw(){
-      g.fillStyle = '#5a5640'; g.fillRect(29, 43, 16, 7); g.fillStyle = '#16170f'; g.fillRect(30, 49, 4, 3); g.fillRect(40, 49, 4, 3); g.fillRect(29, 40, 9, 2);
-      hTxt('TODOTERRENO: ESQUIVA SU COHETE', 64, 46);
-      hTank(37, 72, 0.75, '#74746a'); hTxt('LIGERO: RAPIDO, AMETRALLADORA', 64, 70);
-      hTank(37, 98, 1, '#6a6350'); hTxt('MEDIO: 2 TIROS DE FRENTE', 64, 96);
-      hTank(37, 128, 1.3, '#484842'); hTxt('PESADO: LENTO, DOBLE DAÑO', 64, 126);
-      hTxt('POR EL FLANCO HACES EL DOBLE', 160, 150, '#ffe9a0', 'center');
-      bevel(30, 163, 14, 12, '#3f8a34', false); hTxt('+', 37, 169, '#fff', 'center'); hTxt('CAJA VERDE: BLINDAJE', 64, 169);
-      bevel(30, 183, 14, 12, '#b89a20', false); hTxt('CAJA AMARILLA: MUNICION', 64, 189);
-  } },
-  { t: 'MAS PELIGROS', draw(){
-      g.fillStyle = '#3e4234'; g.fillRect(31, 46, 12, 5); g.fillRect(24, 47, 8, 2); g.fillStyle = '#cfd4b8'; g.fillRect(27, 43, 20, 1);
-      hTxt('HELICOPTERO: TE RODEA. USA LA', 64, 42); hTxt('AMETRALLADORA PARA DERRIBARLO', 64, 53);
-      g.strokeStyle = '#ff2a18'; g.lineWidth = 2; g.beginPath(); g.arc(37, 80, 9, 0, TAU); g.stroke(); g.lineWidth = 1; g.fillStyle = 'rgba(255,42,24,.5)'; g.beginPath(); g.arc(37, 80, 5, 0, TAU); g.fill();
-      hTxt('MORTERO: SAL DEL CIRCULO ROJO', 64, 80);
-      g.fillStyle = '#4e4a3a'; g.fillRect(29, 99, 14, 10); g.fillStyle = '#16170f'; g.fillRect(43, 103, 8, 2);
-      hTxt('CAZACARROS: TIRA DE LEJOS', 64, 104);
-      hTank(37, 132, 1.5, '#4a2c26'); hTxt('JEFE (OLEADA 5): DOS DISPAROS', 64, 127); hTxt('Y APOYO AEREO', 64, 138);
-      hTxt('LOS REFUERZOS LLEGAN A MITAD', 160, 160, '#d8dcc4', 'center');
-      hTxt('TRAS CADA OLEADA ELIGES UNA MEJORA', 160, 176, '#ffe9a0', 'center');
-      hTxt('3 BAJAS SEGUIDAS: CARGA RAPIDA', 160, 192, '#ffe9a0', 'center');
-  } }
-];
 function drawMenu(){
   g.fillStyle = 'rgba(0,0,0,' + (0.2 + menuFade * 0.8).toFixed(2) + ')'; g.fillRect(0, 0, W, H);   // penumbra, y fundido a negro en los cortes
   g.fillStyle = '#000'; g.fillRect(0, 0, W, 20); g.fillRect(0, H - 20, W, 20);                       // franjas de cine
@@ -1732,22 +1583,6 @@ function drawMenu(){
     outlined(pad.on ? 'CRUCETA O STICK, Y A' : 'RATON O W S Y ENTER', W / 2, 230, 9, '#8b9872');
     return;
   }
-}
-// Una página del manual. Se dibuja en el lienzo del manual (ver openManual), no dentro del juego.
-function drawHowPage(n){
-  const pg = HOW[n];
-  bevel(0, 0, W, H, '#1c2440', false); bevel(3, 3, W - 6, H - 6, '#141a30', true);
-  label(pg.t, W / 2, 20, 9, '#ffe9a0'); g.fillStyle = '#33406a'; g.fillRect(16, 33, W - 32, 1);
-  pg.draw();
-  g.fillStyle = '#33406a'; g.fillRect(16, 208, W - 32, 1);
-  if (pad.on){                                         // con mando: A sigue, B cierra
-    hBtn(21, 222, 'B', 5); label('CERRAR', 30, 222, 9, '#8b9872', 'left');
-    label(n < HOW.length - 1 ? 'SIGUE' : 'CERRAR', W - 30, 222, 9, '#ffe9a0', 'right'); hBtn(W - 21, 222, 'A', 5);
-  } else {
-    label(n ? '< ANTES' : '', 16, 222, 9, '#8b9872', 'left');
-    label(n < HOW.length - 1 ? 'SIGUE >' : 'CERRAR >', W - 16, 222, 9, '#ffe9a0', 'right');
-  }
-  HOW.forEach((_, i) => { g.fillStyle = i === n ? '#ffe9a0' : '#33406a'; g.fillRect(W / 2 - HOW.length * 4 + i * 8, 220, 5, 5); });
 }
 
 function drawCursor(){
@@ -1910,9 +1745,9 @@ function drawSpark(c, cx, cy, r, grow = 1){
 }
 
 const caseCv = document.getElementById('case');
-const coverC = document.createElement('canvas'), discC = document.createElement('canvas');
-let cr, cScene, cCam, caseG, lidPivot, disc, coverTex, discTex, tankArt, bootT = 0, caseT = 0;
-const CM = { x: 0, y: 0, over: false }, ins = { on: false, t: 0, scrolled: false };
+const coverC = document.createElement('canvas'), discC = document.createElement('canvas'), bookC = document.createElement('canvas');
+let cr, cScene, cCam, caseG, lidPivot, disc, caseTray, bookMesh, coverTex, discTex, bookTex, tankArt, bootT = 0, caseT = 0;
+const CM = { x: 0, y: 0, over: false }, ins = { on: false, t: 0, scrolled: false }, CASE = { open: false, t: 0, lift: 0 };
 
 // El tanque de la portada es el modelo 3D del juego, renderizado una vez a una imagen.
 function renderTankArt(){
@@ -1940,6 +1775,7 @@ function paintCase(){
   c.fillStyle = '#3a2414'; c.fillRect(SW, 196, CW - SW, CH - 196); c.fillStyle = '#5a3a1c'; c.fillRect(SW, 196, CW - SW, 3);
   for (let i = 0; i < 160; i++){ c.fillStyle = i % 2 ? '#2c1a0e' : '#4a3018'; c.fillRect(SW + (i * 53) % (CW - SW), 200 + (i * 29) % 48, 3, 1); }
   if (tankArt) c.drawImage(tankArt, SW + 2, 22, 240, 240);
+  const art = document.createElement('canvas'); art.width = CW - SW; art.height = CH; art.getContext('2d').drawImage(coverC, -SW, 0);   // el arte sin letras, para el disco
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = '32px ' + FONT; c.fillStyle = '#000'; c.fillText('Т-55', ax + 3, 31); c.fillStyle = '#c02818'; c.fillText('Т-55', ax + 1, 29); c.fillStyle = '#ffe060'; c.fillText('Т-55', ax, 28);
   c.font = '16px ' + FONT; c.fillStyle = '#000'; c.fillText('ARCADE GAME', ax + 2, 56); c.fillStyle = '#fff'; c.fillText('ARCADE GAME', ax, 54);
@@ -1949,100 +1785,110 @@ function paintCase(){
   c.save(); c.translate(SW / 2 + 1, 140); c.rotate(-Math.PI / 2); c.font = '16px ' + FONT; c.fillStyle = '#fff'; c.fillText('VIBECODED', 0, 0); c.restore();
   c.fillStyle = '#fff'; c.fillRect(6, CH - 30, 26, 24); c.fillStyle = '#000'; c.fillRect(8, CH - 28, 22, 20);
   c.font = '8px ' + FONT; c.fillStyle = '#fff'; c.fillText(GAMES[0].num, SW / 2, CH - 17);
-  // disco: negro, con etiqueta, chispa y agujero
-  const D = 128, k = discC.getContext('2d'); discC.width = discC.height = D;
+  // disco: la foto del tanque de la portada impresa en la cara, sin letras, con el anillo central transparente
+  const D = 256, k = discC.getContext('2d'); discC.width = discC.height = D; k.imageSmoothingEnabled = false;
   k.fillStyle = '#0c0c10'; k.fillRect(0, 0, D, D);
-  k.fillStyle = '#16161c'; k.beginPath(); k.arc(64, 64, 62, 0, TAU); k.fill();
-  k.fillStyle = '#2c3a22'; k.beginPath(); k.arc(64, 64, 56, 0, TAU); k.fill();
-  k.strokeStyle = '#3c4c2c'; for (let r = 24; r < 56; r += 5){ k.beginPath(); k.arc(64, 64, r, 0, TAU); k.stroke(); }
-  drawSpark(k, 64, 30, 15);
-  k.textAlign = 'center'; k.textBaseline = 'middle'; k.font = '16px ' + FONT; k.fillStyle = '#000'; k.fillText('Т-55', 66, 98); k.fillStyle = '#ffe060'; k.fillText('Т-55', 64, 96);
-  k.font = '8px ' + FONT; k.fillStyle = '#fff'; k.fillText('VIBECODED', 64, 112);
-  k.fillStyle = '#8a8a90'; k.beginPath(); k.arc(64, 64, 16, 0, TAU); k.fill();
-  k.fillStyle = '#0b0a0d'; k.beginPath(); k.arc(64, 64, 8, 0, TAU); k.fill();
-  if (coverTex){ coverTex.needsUpdate = true; discTex.needsUpdate = true; }
+  k.save(); k.beginPath(); k.arc(128, 128, 124, 0, TAU); k.clip();
+  k.drawImage(art, 34, 4, art.width - 34, art.height - 4, 0, 0, D, D); k.restore();       // encuadre centrado en el tanque
+  k.strokeStyle = '#a8a8b0'; k.lineWidth = 3; k.beginPath(); k.arc(128, 128, 124, 0, TAU); k.stroke();
+  k.fillStyle = 'rgba(200,205,215,.85)'; k.beginPath(); k.arc(128, 128, 34, 0, TAU); k.fill();
+  k.fillStyle = '#9a9aa2'; k.beginPath(); k.arc(128, 128, 24, 0, TAU); k.fill();
+  k.fillStyle = '#0b0a0d'; k.beginPath(); k.arc(128, 128, 15, 0, TAU); k.fill();
+  // portada del librillo (la primera hoja del manual)
+  const b = bookC.getContext('2d'); bookC.width = 320; bookC.height = 240; b.imageSmoothingEnabled = false;
+  b.fillStyle = '#ecebe2'; b.fillRect(0, 0, 320, 240);                         // papel blanco, como los manuales de la época
+  b.fillStyle = '#d6d4c8'; for (let i = 0; i < 400; i++) b.fillRect((i * 97) % 320, (i * 61) % 240, 1, 1);
+  b.fillStyle = '#111'; b.fillRect(0, 0, 320, 6); b.fillRect(0, 234, 320, 6);
+  b.textAlign = 'center'; b.textBaseline = 'middle';
+  drawSpark(b, 160, 58, 22);
+  b.font = '16px ' + FONT; b.fillStyle = '#111'; b.fillText('INSTRUCCIONES', 160, 118);
+  b.fillStyle = '#111'; b.fillRect(60, 136, 200, 2);
+  b.font = '8px ' + FONT; b.fillStyle = '#444'; b.fillText('T-55 ARCADE GAME', 160, 154);
+  b.fillText('VIBECODED · ' + GAMES[0].num, 160, 214);
+  if (coverTex){ coverTex.needsUpdate = true; discTex.needsUpdate = true; bookTex.needsUpdate = true; }
 }
-// Caja 3D: bandeja, disco dentro y tapa con la portada, que gira sobre la bisagra izquierda.
+// Caja 3D: bandeja con el disco dentro y tapa con la portada, que gira sobre la bisagra izquierda.
+// Cerrada: el disco no se ve. Al abrirla, la tapa se abate a la izquierda y deja ver el manual,
+// y el disco sale de la bandeja y queda a la derecha, aparte: pulsarlo mete el disco en la consola.
+const DISC_OPEN = 2.74, OPEN_X = 0.26, cRay = new THREE.Raycaster(), cNdc = new THREE.Vector2();
 function buildCase(){
   cr = new THREE.WebGLRenderer({ canvas: caseCv, antialias: false, alpha: true });
-  cr.setPixelRatio(1); cr.setSize(360, 360, false);                           // baja resolución, ampliada con píxeles duros
+  cr.setPixelRatio(1); cr.setSize(640, 360, false);                           // baja resolución, ampliada con píxeles duros
   renderTankArt(); paintCase(); cr.setClearColor(0x000000, 0);
   const tex = cvs => { const t = new THREE.CanvasTexture(cvs); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
-  coverTex = tex(coverC); discTex = tex(discC);
-  cScene = new THREE.Scene(); cCam = new THREE.PerspectiveCamera(30, 1, 0.1, 60); cCam.position.set(0, 0, 8.6);
+  coverTex = tex(coverC); discTex = tex(discC); bookTex = tex(bookC);
+  cScene = new THREE.Scene(); cCam = new THREE.PerspectiveCamera(30, 16 / 9, 0.1, 60); cCam.position.set(0, 0, 8.6);
   cScene.add(new THREE.AmbientLight(0xffffff, 0.78));
   const dl = new THREE.DirectionalLight(0xffffff, 0.55); dl.position.set(-2, 3, 5); cScene.add(dl);
   const L = o => new THREE.MeshLambertMaterial(o), plastic = L({ color: 0x1c1c20 }), clear = L({ color: 0x9aa0a8, transparent: true, opacity: 0.4 });
   caseG = new THREE.Group(); cScene.add(caseG);
-  const tray = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.16), plastic); tray.position.z = -0.08;
+  caseTray = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.16), plastic); caseTray.position.z = -0.08;
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 16), L({ color: 0x2a2a30 })); hub.rotation.x = Math.PI / 2; hub.position.z = 0.02;
   disc = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.08, 0.025, 40), [L({ color: 0x111114 }), L({ map: discTex }), L({ color: 0x0a0a0e })]);
-  disc.rotation.x = Math.PI / 2; disc.position.set(DISC_X, 0, 0.03);   // el disco asoma por el lado: es lo que se pulsa para jugar
-  caseG.position.x = -0.42;
+  disc.rotation.x = Math.PI / 2; disc.position.set(0, 0, 0.03);
   lidPivot = new THREE.Group(); lidPivot.position.set(-1.42, 0, 0.06);
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.05), [clear, clear, clear, clear, L({ map: coverTex }), L({ color: 0xd8d8d0 })]);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(2.84, 2.5, 0.05), [clear, clear, clear, clear, L({ map: coverTex }), L({ color: 0x2a2a30 })]);
   lid.position.set(1.42, 0, 0.03); lidPivot.add(lid);
-  caseG.add(tray, disc, lidPivot);
-  caseCv.addEventListener('mousemove', ev => { CM.x = ev.offsetX / caseCv.clientWidth * 2 - 1; CM.y = ev.offsetY / caseCv.clientHeight * 2 - 1; CM.over = true; });
-  caseCv.addEventListener('mouseleave', () => { CM.over = false; });
-  // Clic en el disco: jugar. Clic en la caja: abrir el manual.
-  const overDisc = ev => { cRay.setFromCamera(cNdc.set(ev.offsetX / caseCv.clientWidth * 2 - 1, 1 - ev.offsetY / caseCv.clientHeight * 2), cCam); return cRay.intersectObjects([disc, lidPivot.children[0]])[0]?.object === disc; };
-  caseCv.addEventListener('mousemove', ev => { CM.disc = overDisc(ev); caseCv.title = CM.disc ? 'Meter el disco y jugar' : 'Leer el manual'; });
-  caseCv.addEventListener('click', ev => { if (overDisc(ev)) insertDisc(); else openManual(); });
-  caseCv.addEventListener('keydown', ev => { if (ev.code === 'Enter' || ev.code === 'Space'){ ev.preventDefault(); insertDisc(); } else if (ev.code === 'KeyI'){ ev.preventDefault(); openManual(); } });
+  bookMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.95), L({ map: bookTex }));   // el librillo, metido en la tapa
+  bookMesh.rotation.y = Math.PI; bookMesh.position.z = -0.028; lid.add(bookMesh);
+  caseG.add(caseTray, hub, disc, lidPivot);
+  const hitAt = ev => { cRay.setFromCamera(cNdc.set(ev.offsetX / caseCv.clientWidth * 2 - 1, 1 - ev.offsetY / caseCv.clientHeight * 2), cCam);
+    return cRay.intersectObjects([disc, caseTray, lid, bookMesh])[0]?.object; };
+  caseCv.addEventListener('mousemove', ev => { CM.x = ev.offsetX / caseCv.clientWidth * 2 - 1; CM.y = ev.offsetY / caseCv.clientHeight * 2 - 1; CM.over = true;
+    const o = hitAt(ev); CM.disc = CASE.open && o === disc; CM.hit = !!o;
+    caseCv.style.cursor = o ? 'pointer' : 'default'; caseCv.title = !o ? '' : !CASE.open ? 'Abrir la caja' : CM.disc ? 'Meter el disco y jugar' : o === bookMesh ? 'Leer el manual (PDF)' : 'Cerrar la caja'; });
+  caseCv.addEventListener('mouseleave', () => { CM.over = false; CM.disc = false; });
+  caseCv.addEventListener('click', ev => { const o = hitAt(ev); if (!o) return;
+    if (!CASE.open) openCase(); else if (o === disc) insertDisc(); else if (o === bookMesh) openManual(); else closeCase(); });
+  caseCv.addEventListener('keydown', ev => {
+    if (ev.code === 'Enter' || ev.code === 'Space'){ ev.preventDefault(); CASE.open ? insertDisc() : openCase(); }
+    else if (ev.code === 'KeyI' && CASE.open){ ev.preventDefault(); openManual(); }
+    else if (ev.code === 'Escape' && CASE.open){ ev.preventDefault(); closeCase(); }
+  });
 }
-const DISC_X = 1.05, cRay = new THREE.Raycaster(), cNdc = new THREE.Vector2();
-// El manual: las páginas de instrucciones, dibujadas con las mismas piezas que el HUD pero en su propio lienzo.
-const manDlg = document.getElementById('manual'), manCv = document.getElementById('manCv'), MAN = { page: 0 };
-function drawManual(){
-  const g0 = g; g = manCv.getContext('2d'); g.imageSmoothingEnabled = false;
-  try { drawHowPage(MAN.page); } finally { g = g0; }
-  document.getElementById('manPrev').style.visibility = MAN.page ? 'visible' : 'hidden';
-  document.getElementById('manNext').textContent = MAN.page < HOW.length - 1 ? 'SIGUE >' : 'CERRAR';
-}
-function openManual(){ if (state !== 'off' || ins.on || manDlg.open) return; MAN.page = 0; W = 320; H = 240; manDlg.showModal(); drawManual(); }
-function manualCmd(c){
-  if (!manDlg.open) return;
-  if (c === 'back') return manDlg.close();
-  MAN.page += c === 'left' ? -1 : 1;
-  if (MAN.page >= HOW.length) return manDlg.close();
-  MAN.page = Math.max(0, MAN.page); drawManual();
-}
-manCv.addEventListener('click', ev => manualCmd(ev.offsetX < manCv.clientWidth / 3 ? 'left' : 'right'));
-document.getElementById('manPrev').addEventListener('click', ev => { ev.stopPropagation(); manualCmd('left'); });
-document.getElementById('manNext').addEventListener('click', ev => { ev.stopPropagation(); manualCmd('right'); });
-manDlg.querySelector('.bar .close').addEventListener('click', () => manDlg.close());
-manDlg.addEventListener('click', ev => { if (ev.target === manDlg) manDlg.close(); });
-manDlg.addEventListener('keydown', ev => { const c = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Enter: 'right', Space: 'right' }[ev.code]; if (c && ev.target.tagName !== 'BUTTON'){ ev.preventDefault(); manualCmd(c); } });
-function insertDisc(){ if (state !== 'off' || ins.on) return; ins.on = true; ins.t = 0; audioInit(); boom(0.25, 1800, 0.12); }
+function updateHint(){ document.getElementById('hint').textContent = !CASE.open ? 'CLIC EN LA CAJA PARA ABRIRLA' : pad.on ? 'Y: MANUAL · A: JUGAR · B: CERRAR' : 'CLIC EN EL MANUAL PARA LEERLO · CLIC EN EL DISCO PARA JUGAR'; }
+function openCase(){ if (state !== 'off' || ins.on || CASE.open) return; CASE.open = true; audioInit(); updateHint(); boom(0.12, 900, 0.1); }
+function closeCase(){ if (!CASE.open || ins.on) return; CASE.open = false; updateHint(); boom(0.15, 700, 0.08); }
+function insertDisc(){ if (state !== 'off' || ins.on) return; if (!CASE.open || CASE.t < 1) return openCase();
+  ins.on = true; ins.t = 0; audioInit(); boom(0.25, 1800, 0.12); }
+
+// El manual: un PDF con las reglas (manual.pdf, hecho con tools/make-manual.py). Se abre en otra pestaña.
+function openManual(){ if (!CASE.open || ins.on) return; open('manual.pdf', '_blank', 'noopener'); }
 
 function caseFrame(t){
   requestAnimationFrame(caseFrame);
   if (state !== 'off' || !cr) return;                                         // con la tele encendida no se dibuja la caja
   const dt = clamp((t - (caseT || t)) / 1000, 0, 0.05), now = t / 1000; caseT = t;
   const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
-  // inclinación: balanceo suave en reposo; con el ratón encima, la portada se gira hacia el cursor
-  let ty = Math.sin(now * 0.8) * 0.2, tx = Math.sin(now * 0.6) * 0.05, sc = 1;
-  if (ins.on){ ty = 0.3; tx = -0.08; }
-  else if (manDlg.open){ ty = 0.5; tx = 0; }
-  else if (CM.over){ ty = CM.x * 0.55; tx = CM.y * 0.42; sc = 1.06; }
+  CASE.t = clamp(CASE.t + (CASE.open ? dt : -dt) / 1.1, 0, 1);
+  const o = ease(CASE.t), ol = ease(CASE.t / 0.7), od = ease((CASE.t - 0.4) / 0.6);
+  // cerrada: balanceo suave y se gira hacia el cursor; abierta: plana de frente, para leer el manual
+  let ty = Math.sin(now * 0.8) * 0.2 * (1 - o), tx = Math.sin(now * 0.6) * 0.05 * (1 - o), sc = 1;
+  if (!CASE.open && CM.over && !ins.on){ ty = CM.x * 0.55; tx = CM.y * 0.42; sc = CM.hit ? 1.06 : 1; }
   const k = Math.min(1, dt * 7);
   caseG.rotation.y += (ty - caseG.rotation.y) * k; caseG.rotation.x += (tx - caseG.rotation.x) * k;
   caseG.scale.setScalar(caseG.scale.x + (sc - caseG.scale.x) * k);
-  caseG.position.y = ins.on ? 0 : Math.sin(now * 1.3) * 0.04;
-  lidPivot.rotation.y += ((manDlg.open ? -1.1 : 0) - lidPivot.rotation.y) * k;   // con el manual abierto, la tapa se entreabre
-  if (!ins.on) disc.position.x += ((DISC_X + (CM.disc && CM.over ? 0.16 : 0)) - disc.position.x) * k;   // el disco se asoma un poco más al señalarlo
-  if (ins.on){                                                                // el disco termina de salir girando y sube hacia la tele
+  caseG.position.x = OPEN_X * o; caseG.position.y = Math.sin(now * 1.3) * 0.04 * (1 - o);
+  lidPivot.rotation.y = -Math.PI * ol;
+  cCam.position.z = 8.6 + 1.0 * o;
+  if (!ins.on){                                                               // el disco sale de la bandeja y se aparta a la derecha
+    CASE.lift += ((CM.disc && CM.over ? 0.25 : 0) - CASE.lift) * k;
+    disc.position.set(DISC_OPEN * od, CASE.lift * 0.3, 0.03 + Math.sin(od * Math.PI) * 0.5 + CASE.lift);
+    disc.rotation.set(Math.PI / 2, 0, 0); disc.rotateY(now * 0.6 * od);
+  } else {                                                                    // el disco sube girando hacia la tele
     ins.t += dt;
-    const up = Math.max(0, ins.t - 0.95);
-    disc.position.x = DISC_X + ease(ins.t / 0.5) * 0.9; disc.position.z = 0.03 + ease((ins.t - 0.3) / 0.5) * 0.9; disc.position.y = up * up * 16;
+    const up = Math.max(0, ins.t - 0.7);
+    disc.position.z = 0.28 + ease(ins.t / 0.5) * 0.9; disc.position.y = up * up * 16;
     disc.rotateY(dt * (3 + ins.t * 16));
-    if (ins.t > 1.2 && !ins.scrolled){ ins.scrolled = true; scrollTo({ top: 0, behavior: 'smooth' }); }
-    if (ins.t > 2.2) powerOn();
+    if (ins.t > 1.0 && !ins.scrolled){ ins.scrolled = true; scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (ins.t > 2.0) powerOn();
   }
   cr.render(cScene, cCam);
 }
+const v3c = new THREE.Vector3();
 function powerOn(){
   state = 'boot'; bootT = 0; scrollTo(0, 0);
+  try { renderer.compile(scene, cam); } catch (e){}                            // compila los shaders durante el arranque: sin tirón en el primer fotograma
   document.documentElement.style.overflow = 'hidden';                         // se acabó bajar: empieza el juego
   document.getElementById('down').style.display = 'none';
   drawTV(true);
@@ -2104,7 +1950,7 @@ function showGame(){
   });
 }
 // logo de la esquina y ventana de letra pequeña
-function drawLogo(){ for (const id of ['logo', 'logo2', 'logo3', 'logo4']){ const c = document.getElementById(id).getContext('2d'); c.clearRect(0, 0, 32, 32); drawSpark(c, 15, 15, 14); } }
+function drawLogo(){ for (const id of ['logo', 'logo2', 'logo3']){ const c = document.getElementById(id).getContext('2d'); c.clearRect(0, 0, 32, 32); drawSpark(c, 15, 15, 14); } }
 const legalDlg = document.getElementById('legal');
 document.querySelectorAll('[data-legal]').forEach(b => b.addEventListener('click', () => {
   legalDlg.showModal(); legalDlg.scrollTop = 0;
