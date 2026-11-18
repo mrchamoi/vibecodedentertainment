@@ -1,11 +1,11 @@
-// Renderiza la banda sonora del T-55 (una marcha de guerra en re menor, en 8 variaciones) a music/tracks.js.
-// Uso:  node tools/render-music.js        (necesita ffmpeg con libvorbis)
-// Solo se usa en tu computadora para fabricar music/tracks.js; la página publicada no necesita Node: es un archivo estático más.
+// Renderiza la banda sonora del T-55 (una marcha de guerra en re menor, en 8 variaciones) a juegos/t55/musica.js.
+// Uso:  node juegos/t55/herramientas/render-music.js        (necesita ffmpeg con libvorbis)
+// Solo se usa en tu computadora para fabricar juegos/t55/musica.js; la página publicada no necesita Node: es un archivo estático más.
 // Limitaciones de la época, al estilo de la consola: 22 050 Hz, muestras de instrumentos afinadas por velocidad,
 // 24 voces como máximo, reverb de sala estéreo y compresión ADPCM de 4 bits (bloques de 28 muestras) antes del OGG.
 'use strict';
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const SR = 22050, PAD = SR / 2, TAU = Math.PI * 2, OUT = path.join(__dirname, '..', 'music');
+const SR = 22050, PAD = SR / 2, TAU = Math.PI * 2, OUT = path.join(__dirname, '..');
 let seed = 1234567; const noise = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 2147483648 - 1; };
 
 /* ---------- muestras de instrumentos (orquesta militar) ---------- */
@@ -191,4 +191,4 @@ for (const [k, [L, R, loopN]] of Object.entries(rendered)){
   console.log(k, (n / SR).toFixed(2) + ' s', (packed[k].length * 0.75 / 1024).toFixed(0) + ' KB');
 }
 // Todo en un solo .js con <script>: así suena también abriendo index.html con doble clic (file://), sin servidor.
-fs.writeFileSync(path.join(OUT, 'tracks.js'), 'window.T55_MUSIC = ' + JSON.stringify(packed) + ';\nwindow.T55_LOOP = ' + JSON.stringify(loops) + ';\n');
+fs.writeFileSync(path.join(OUT, 'musica.js'), 'window.T55_MUSIC = ' + JSON.stringify(packed) + ';\nwindow.T55_LOOP = ' + JSON.stringify(loops) + ';\n');

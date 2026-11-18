@@ -1,0 +1,223 @@
+<!-- Plantilla del manual de DRIFTING. herramientas/make-manual.py la imprime a ../manual.pdf; {{COVER}} y {{DISC}} se cambian por el arte del juego. -->
+<style>
+  @page{size:148mm 210mm;margin:0}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#fff}
+  body{font-family:"DejaVu Sans","Liberation Sans",Arial,sans-serif;color:#1d1d1b;font-size:9.2pt;line-height:1.45}
+  .pg{width:148mm;height:210mm;padding:14mm 13mm 16mm;position:relative;overflow:hidden;break-after:page}
+  .pg:last-child{break-after:auto}
+  .num{position:absolute;bottom:7mm;left:0;right:0;text-align:center;font-size:7.5pt;color:#5a5a5a;letter-spacing:.08em}
+  .num b{color:#b8281c}
+  .px{font-family:"Press Start 2P",monospace;letter-spacing:.02em}
+  h1{font-family:"Press Start 2P",monospace;font-size:12pt;font-weight:normal;margin:0 0 3mm;padding-bottom:2.5mm;border-bottom:2.5px solid #1d1d1b;letter-spacing:.03em}
+  h1 small{display:block;font-family:"DejaVu Sans",Arial,sans-serif;font-size:7.5pt;color:#b8281c;letter-spacing:.2em;margin-bottom:2mm;text-transform:uppercase}
+  h2{font-size:10.5pt;margin:4.5mm 0 1.5mm;color:#b8281c;text-transform:uppercase;letter-spacing:.06em}
+  p{margin:0 0 2.2mm}
+  table{width:100%;border-collapse:collapse;margin:1.5mm 0 3mm;font-size:8.6pt}
+  th{background:#1d1d1b;color:#fff;text-align:left;padding:1.4mm 2mm;font-weight:bold;font-size:7.8pt;letter-spacing:.06em;text-transform:uppercase}
+  td{padding:1.3mm 2mm;border-bottom:.5pt solid #c9c6ba;vertical-align:top}
+  tr:nth-child(even) td{background:#f4f2ea}
+  .k{display:inline-block;min-width:5.2mm;padding:.3mm 1.2mm;border:1px solid #1d1d1b;border-bottom-width:2px;border-radius:1.2mm;font-size:7.4pt;font-weight:bold;text-align:center;background:#fff;line-height:1.3}
+  .b{display:inline-block;width:5.2mm;height:5.2mm;border-radius:50%;color:#fff;font-size:7pt;font-weight:bold;text-align:center;line-height:5.2mm}
+  .bA{background:#3a8a3a}.bB{background:#b8281c}.bX{background:#2d5fa8}.bY{background:#c89a10}
+  .note{border-left:3px solid #b8281c;background:#f7ece9;padding:2mm 3mm;margin:3mm 0;font-size:8.6pt}
+  .tip{border-left:3px solid #3a8a3a;background:#ecf3e8;padding:2mm 3mm;margin:3mm 0;font-size:8.6pt}
+  .tip>b:first-child,.note>b:first-child{text-transform:uppercase;letter-spacing:.05em;font-size:7.8pt}
+  ul{margin:0 0 2.5mm;padding-left:4.5mm}
+  li{margin-bottom:1.4mm}
+  .stat{display:inline-block;font-size:7.2pt;background:#1d1d1b;color:#fff;padding:.2mm 1.5mm;margin-right:1mm;border-radius:.8mm}
+  .foe{border:1px solid #c9c6ba;padding:2.2mm 3mm;margin-bottom:2.4mm;break-inside:avoid}
+  .foe h3{margin:0 0 1mm;font-size:9.5pt;display:flex;justify-content:space-between;align-items:baseline}
+  .foe h3 span{font-size:7.6pt;color:#b8281c;font-weight:bold}
+  .foe p{margin:0 0 1mm;font-size:8.5pt}
+  .cover{background:#ecebe2;padding:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .cover .bar{width:100%;height:9mm;background:#111}
+  .cover .logo{font-family:"Press Start 2P",monospace;font-size:8pt;letter-spacing:.3em;margin-top:13mm;color:#444}
+  .cover .t1{font-family:"Press Start 2P",monospace;font-size:21pt;margin-top:9mm;letter-spacing:.04em}
+  .cover .rule{width:96mm;height:3px;background:#111;margin:5mm 0 4mm}
+  .cover .t2{font-size:11pt;letter-spacing:.35em;font-weight:bold}
+  .cover img{width:92mm;margin-top:10mm;border:3px solid #111;image-rendering:pixelated}
+  .cover .foot{margin-top:auto;margin-bottom:7mm;font-size:7.5pt;letter-spacing:.2em;color:#555}
+  .toc td{border:0;padding:1.1mm 0;background:none!important}
+  .toc td:last-child{text-align:right;color:#b8281c;font-weight:bold}
+  .back{background:#111;color:#ddd;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .back img{width:58mm;border-radius:50%;margin-bottom:9mm;box-shadow:0 0 0 2px #888}
+</style>
+
+<section class="pg cover">
+  <div class="bar"></div>
+  <div class="logo">VIBECODED</div>
+  <div class="t1">INSTRUCCIONES</div>
+  <div class="rule"></div>
+  <div class="t2">DRIFTING · RALLY '97</div>
+  <img src="{{COVER}}" alt="">
+  <div class="foot">DISCO 02 · CARRERAS · 1 JUGADOR</div>
+  <div class="bar"></div>
+</section>
+
+<section class="pg">
+  <h1>PARA EMPEZAR</h1>
+  <h2>Cargar el juego</h2>
+  <p>Haz clic en la caja para abrirla. Haz clic en el disco o pulsa <span class="k">Enter</span> para jugar.</p>
+  <p>Con mando: <span class="b bA">A</span> abre la caja y mete el disco, <span class="b bY">Y</span> abre este manual, <span class="b bB">B</span> cierra la caja.</p>
+  <h2>Objetivo</h2>
+  <p>Gana el campeonato de tres tramos. En cada tramo das dos vueltas contra cinco rivales. Sales el último.</p>
+  <p>Para pasar al tramo siguiente tienes que llegar a la meta <b>entre los tres primeros</b> y <b>antes de que el reloj llegue a cero</b>.</p>
+  <h2>Menú</h2>
+  <table>
+    <tr><th style="width:36%">Opción</th><th>Qué es</th></tr>
+    <tr><td>Campeonato</td><td>Los tres tramos seguidos, con puntos.</td></tr>
+    <tr><td>Contrarreloj</td><td>Un tramo a elegir, tú solo, tres vueltas, sin límite de tiempo.</td></tr>
+    <tr><td>Controles</td><td>Las teclas y los botones.</td></tr>
+    <tr><td>Salir</td><td>Apaga la consola y vuelve a la estantería.</td></tr>
+  </table>
+  <p>Muévete con las flechas, <span class="k">W</span> <span class="k">S</span> o la cruceta. Confirma con <span class="k">Enter</span> o <span class="b bA">A</span>. También puedes usar el ratón.</p>
+  <h2>Pausa</h2>
+  <p><span class="k">Esc</span> o <span class="k">Start</span>: continuar, reiniciar el tramo o salir al menú.</p>
+  <div class="note"><b>Aviso:</b> el juego tiene destellos y sacudidas de pantalla.</div>
+  <div class="num">— <b>2</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONTROLES</h1>
+  <h2>Teclado</h2>
+  <table>
+    <tr><th style="width:40%">Tecla</th><th>Acción</th></tr>
+    <tr><td><span class="k">W</span> o <span class="k">↑</span></td><td>Acelerar</td></tr>
+    <tr><td><span class="k">S</span> o <span class="k">↓</span></td><td>Frenar. Parado, marcha atrás</td></tr>
+    <tr><td><span class="k">A</span> <span class="k">D</span> o <span class="k">←</span> <span class="k">→</span></td><td>Girar</td></tr>
+    <tr><td><span class="k">Espacio</span></td><td>Freno de mano</td></tr>
+    <tr><td><span class="k">C</span></td><td>Cambiar de cámara (detrás, capó, lejos)</td></tr>
+    <tr><td><span class="k">Esc</span></td><td>Pausa</td></tr>
+  </table>
+  <h2>Mando</h2>
+  <table>
+    <tr><th style="width:40%">Botón</th><th>Acción</th></tr>
+    <tr><td><span class="k">R2</span> o <span class="b bA">A</span></td><td>Acelerar (R2 es progresivo)</td></tr>
+    <tr><td><span class="k">L2</span> o <span class="b bX">X</span></td><td>Frenar. Parado, marcha atrás</td></tr>
+    <tr><td>Stick izquierdo o cruceta</td><td>Girar</td></tr>
+    <tr><td><span class="b bB">B</span> o <span class="k">R1</span></td><td>Freno de mano</td></tr>
+    <tr><td><span class="b bY">Y</span></td><td>Cambiar de cámara</td></tr>
+    <tr><td><span class="k">Start</span></td><td>Pausa</td></tr>
+  </table>
+  <p>El cambio es automático.</p>
+  <div class="num">— <b>3</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>EN PANTALLA</h1>
+  <table>
+    <tr><th style="width:36%">Dónde</th><th>Qué</th></tr>
+    <tr><td>Arriba, centro</td><td><b>TIEMPO</b>: los segundos que te quedan. Parpadea en rojo por debajo de 10.</td></tr>
+    <tr><td>Debajo del tiempo</td><td>La nota del copiloto: la próxima curva o salto.</td></tr>
+    <tr><td>Arriba, izquierda</td><td>Tu puesto y la vuelta.</td></tr>
+    <tr><td>Arriba, derecha</td><td>Tiempo de carrera y tu vuelta más rápida.</td></tr>
+    <tr><td>Abajo, izquierda</td><td>Mapa del tramo. Tú eres el punto rojo.</td></tr>
+    <tr><td>Abajo, derecha</td><td>Velocidad, cuentarrevoluciones y marcha.</td></tr>
+  </table>
+  <h2>El reloj</h2>
+  <p>Cada vuelta tiene tres <b>controles de paso</b>: dos arcos azules de CONTROL y la meta. Al pasar por cada uno se suman segundos al reloj. Si llega a cero antes de un control, se acaba el tramo: <b>TIEMPO AGOTADO</b>.</p>
+  <h2>La salida</h2>
+  <p>Antes de la cuenta atrás ves el nombre del tramo. Durante la cuenta atrás puedes pisar el gas para subir de vueltas; el coche no sale hasta el «¡YA!».</p>
+  <div class="tip"><b>Truco:</b> si vas justo de tiempo, derrapa. Ver la página siguiente.</div>
+  <div class="num">— <b>4</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONDUCIR Y DERRAPAR</h1>
+  <h2>El freno de mano</h2>
+  <p>Con el freno de mano las ruedas de atrás se sueltan y el coche se cruza. Mientras lo tienes pulsado no hay tracción. Suéltalo, acelera y gira el volante hacia el lado contrario para salir de la curva.</p>
+  <h2>Derrapar da tiempo</h2>
+  <p>Cuando el coche va de lado y rápido, aparece <b>DERRAPE</b> con una barra. Al terminar el derrape se suman décimas al reloj: cuanto más largo, más rápido y más cruzado, más tiempo.</p>
+  <ul>
+    <li>Si empiezas otro derrape antes de 1,6 segundos, se encadena: <b>x2</b>, <b>x3</b>… y suma más.</li>
+    <li>Un golpe fuerte contra el borde mientras derrapas lo pierde entero.</li>
+    <li>En contrarreloj el derrape da puntos en vez de tiempo.</li>
+  </ul>
+  <h2>La pista y sus bordes</h2>
+  <ul>
+    <li>Fuera de la pista, en la cuneta, el coche agarra menos y frena.</li>
+    <li>Los árboles, las rocas, las balas de paja y los muros de nieve son el límite. Chocar frena mucho.</li>
+    <li>Los rivales también chocan contigo. Puedes empujarlos, y ellos a ti.</li>
+  </ul>
+  <h2>Saltos</h2>
+  <p>En las crestas el coche vuela. En el aire no gira ni acelera: entra recto y con el volante centrado.</p>
+  <div class="num">— <b>5</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>EL COPILOTO</h1>
+  <p>Unos 150 metros antes de cada curva aparece su nota debajo del reloj, con un pitido de radio.</p>
+  <table>
+    <tr><th style="width:22%">Nota</th><th>Qué significa</th></tr>
+    <tr><td class="px" style="color:#3a8a3a">6</td><td>Curva muy abierta. A fondo.</td></tr>
+    <tr><td class="px" style="color:#3a8a3a">5</td><td>Abierta. Casi a fondo.</td></tr>
+    <tr><td class="px" style="color:#c89a10">4</td><td>Media. Levanta un poco.</td></tr>
+    <tr><td class="px" style="color:#c89a10">3</td><td>Cerrada. Frena antes.</td></tr>
+    <tr><td class="px" style="color:#b8281c">2</td><td>Muy cerrada. Frena fuerte.</td></tr>
+    <tr><td class="px" style="color:#b8281c">1</td><td>Horquilla. Frena y usa el freno de mano.</td></tr>
+    <tr><td class="px">SALTO</td><td>Cresta: el coche va a volar.</td></tr>
+  </table>
+  <p>La flecha dice hacia qué lado gira y se dobla más cuanto más cerrada es la curva. En las curvas más cerradas también hay flechas rojas en el borde de fuera.</p>
+  <div class="num">— <b>6</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>LOS TRAMOS</h1>
+  <div class="foe"><h3>1 · LA ARCILLA <span>TIERRA SECA · 2,8 KM</span></h3>
+    <p>Pista ancha entre olivos, con rectas largas y tres saltos. Es el que más agarra.</p></div>
+  <div class="foe"><h3>2 · EL PINAR <span>GRAVA Y BARRO · 2,5 KM</span></h3>
+    <p>Estrecho y retorcido, dentro del bosque. Curvas cerradas una detrás de otra y saltos que caen en curva.</p></div>
+  <div class="foe"><h3>3 · LA CUMBRE <span>NIEVE · 3,1 KM</span></h3>
+    <p>Rápido y abierto, pero sobre nieve: el coche agarra la mitad. Frena antes y mueve el volante con suavidad. Nieva.</p></div>
+  <h2>Los rivales</h2>
+  <table>
+    <tr><th style="width:12%">Nº</th><th>Piloto</th><th>Coche</th></tr>
+    <tr><td>1</td><td>J. Arrieta</td><td>Berlina azul y amarilla</td></tr>
+    <tr><td>3</td><td>T. Virta</td><td>Hatchback blanco y azul</td></tr>
+    <tr><td>4</td><td>C. Duval</td><td>Berlina roja y blanca</td></tr>
+    <tr><td>5</td><td><b>Tú</b></td><td>Hatchback blanco, rojo y verde</td></tr>
+    <tr><td>6</td><td>H. Kovac</td><td>Hatchback negro y naranja</td></tr>
+    <tr><td>8</td><td>M. Brandt</td><td>Berlina verde y blanca</td></tr>
+  </table>
+  <div class="num">— <b>7</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CAMPEONATO Y CONTRARRELOJ</h1>
+  <h2>Puntos del campeonato</h2>
+  <table>
+    <tr><th>Puesto</th><th>1º</th><th>2º</th><th>3º</th><th>4º</th><th>5º</th><th>6º</th></tr>
+    <tr><td>Puntos</td><td>10</td><td>8</td><td>6</td><td>5</td><td>4</td><td>3</td></tr>
+  </table>
+  <p>Solo cuentan los tramos en los que te clasificas (1º, 2º o 3º). Si acabas cuarto o peor, o se agota el reloj, puedes reintentar el tramo: los puntos de los anteriores se conservan.</p>
+  <p>Tras el tercer tramo sale la clasificación final. Gana quien más puntos tenga.</p>
+  <h2>Contrarreloj</h2>
+  <ul>
+    <li>Elige el tramo con <span class="k">←</span> <span class="k">→</span>. Tres vueltas, sin rivales y sin reloj.</li>
+    <li>Se guardan tu mejor vuelta y tu mejor tiempo total de cada tramo.</li>
+    <li>Tu mejor vuelta corre contigo como un coche fantasma azul a partir de la segunda vuelta.</li>
+  </ul>
+  <div class="num">— <b>8</b> —</div>
+</section>
+
+<section class="pg">
+  <h1>CONSEJOS</h1>
+  <ul>
+    <li>Frena en recta, antes de la curva, no dentro.</li>
+    <li>En las horquillas, freno de mano corto y gas.</li>
+    <li>No te pegues al polvo del de delante: no se ve lo que viene.</li>
+    <li>Adelanta por dentro de las curvas.</li>
+    <li>En la nieve, menos volante del que crees.</li>
+    <li>Si te quedas cruzado contra un borde, marcha atrás y sal recto.</li>
+    <li>Prueba la cámara del capó en LA CUMBRE.</li>
+  </ul>
+  <div class="num">— <b>9</b> —</div>
+</section>
+
+<section class="pg back">
+  <img src="{{DISC}}" alt="">
+  <div class="px" style="font-size:12pt;color:#ffe060">DRIFTING · RALLY '97</div>
+  <p style="margin-top:5mm;font-size:8pt;letter-spacing:.2em">VIBECODED</p>
+  <p style="margin-top:14mm;font-size:7pt;color:#aaa;max-width:100mm;line-height:1.6">Proyecto de aficionado, gratuito y sin ánimo de lucro. No afiliado a Sony Interactive Entertainment ni a Anthropic. Coches inspirados en los de rally de los 90, sin marcas. Tipografía Press Start 2P, licencia SIL Open Font License 1.1.</p>
+</section>
